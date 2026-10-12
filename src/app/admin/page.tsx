@@ -2,28 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { 
-  Send, Users, CreditCard, ShieldCheck, Activity, 
-  Plus, CheckCircle, AlertTriangle, LogOut, RefreshCw, Clock
+  Users, Activity, ShieldCheck, Send, ArrowUpRight, 
+  RefreshCw, TrendingUp, DollarSign, Clock, BookOpen, AlertCircle
 } from "lucide-react";
-
-interface UserData {
-  id: string;
-  email: string;
-  name: string | null;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-  subscription: {
-    status: string;
-    expiresAt: string;
-    dailyRate: string;
-  } | null;
-  _count: {
-    telegramAccounts: number;
-    campaigns: number;
-  };
-}
 
 interface StatsData {
   totalUsers: number;
@@ -32,14 +15,12 @@ interface StatsData {
   totalCampaigns: number;
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboardPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
+  const fetchStats = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/users");
@@ -48,7 +29,6 @@ export default function AdminDashboard() {
         return;
       }
       const data = await res.json();
-      setUsers(data.users || []);
       setStats(data.stats || null);
     } catch (err) {
       console.error(err);
@@ -58,250 +38,160 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchStats();
   }, []);
 
-  const handleRechargeDays = async (userId: string, days: number) => {
-    try {
-      setActionLoading(userId);
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, daysToAdd: days }),
-      });
-      if (res.ok) {
-        fetchUsers();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleToggleStatus = async (userId: string, currentActive: boolean) => {
-    try {
-      setActionLoading(userId);
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, isActive: !currentActive }),
-      });
-      if (res.ok) {
-        fetchUsers();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  };
-
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F] selection:bg-black selection:text-white">
-      {/* Top Navbar estilo Apple macOS */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-black/[0.06]">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-black text-white flex items-center justify-center shadow-sm">
-              <Send className="w-4 h-4 -rotate-12 translate-x-[-1px] translate-y-[-1px]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight text-neutral-900">Ott<span className="text-neutral-500 font-semibold">Bot</span></span>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-900 text-white tracking-wide uppercase">
-                  SuperAdmin
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              onClick={fetchUsers}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
-              title="Refrescar datos"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-xs font-medium text-neutral-600 hover:text-red-600 py-1.5 px-3 rounded-xl hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Cerrar sesión</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Título y Resumen */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-            Panel de Control Central
+    <div className="p-8 max-w-7xl w-full mx-auto">
+      {/* Header Superior del Dashboard */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
+            Resumen Operativo
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Supervisa clientes, vigencia de suscripciones y asignación de saldos en tiempo real.
+          <p className="text-xs text-neutral-500 font-medium mt-1">
+            Métricas de facturación diaria, adopción de clientes y actividad en tiempo real.
           </p>
         </div>
 
-        {/* Métricas estilo Shopify / Apple Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="flex items-center justify-between text-neutral-500 mb-2">
-              <span className="text-xs font-medium">Total Clientes</span>
-              <Users className="w-4 h-4 text-neutral-400" />
-            </div>
-            <div className="text-2xl font-bold text-neutral-900 tracking-tight">
-              {stats?.totalUsers ?? "—"}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={fetchStats}
+            className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-semibold rounded-xl border border-neutral-300 shadow-sm transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Actualizar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tarjetas de Métricas con Fondo Blanco Puro que Resalta sobre el Grisáceo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        
+        {/* Card 1 */}
+        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center justify-between text-neutral-400 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Clientes Totales</span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#229ED9] flex items-center justify-center">
+              <Users className="w-4 h-4" />
             </div>
           </div>
-
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="flex items-center justify-between text-neutral-500 mb-2">
-              <span className="text-xs font-medium">Membresías Activas</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div className="text-2xl font-bold text-neutral-900 tracking-tight">
-              {stats?.activeSubscriptions ?? "—"}
-            </div>
+          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
+            {stats?.totalUsers ?? "—"}
           </div>
-
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="flex items-center justify-between text-neutral-500 mb-2">
-              <span className="text-xs font-medium">Cuentas Telegram</span>
-              <Activity className="w-4 h-4 text-blue-500" />
-            </div>
-            <div className="text-2xl font-bold text-neutral-900 tracking-tight">
-              {stats?.totalTelegrams ?? "—"}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="flex items-center justify-between text-neutral-500 mb-2">
-              <span className="text-xs font-medium">Campañas Activas</span>
-              <Send className="w-4 h-4 text-neutral-400" />
-            </div>
-            <div className="text-2xl font-bold text-neutral-900 tracking-tight">
-              {stats?.totalCampaigns ?? "—"}
-            </div>
+          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
+            Registrados en PostgreSQL Neon
           </div>
         </div>
 
-        {/* Tabla de Usuarios y Membresías */}
-        <div className="bg-white rounded-2xl border border-neutral-200/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)] overflow-hidden">
-          <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-neutral-900">Gestión de Clientes</h2>
-            <span className="text-xs text-neutral-400">Modelo $1-$2 / día</span>
+        {/* Card 2 */}
+        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center justify-between text-neutral-400 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Membresías Activas</span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50/70 text-neutral-500 text-xs font-medium border-b border-neutral-100">
-                <tr>
-                  <th className="px-6 py-3.5">Usuario / Correo</th>
-                  <th className="px-6 py-3.5">Rol</th>
-                  <th className="px-6 py-3.5">Estado Membresía</th>
-                  <th className="px-6 py-3.5">Vencimiento</th>
-                  <th className="px-6 py-3.5">Telegrams</th>
-                  <th className="px-6 py-3.5 text-right">Acciones de Cobro</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {users.map((u) => {
-                  const expiresAt = u.subscription?.expiresAt ? new Date(u.subscription.expiresAt) : null;
-                  const isExpired = expiresAt ? new Date() > expiresAt : true;
-                  const daysLeft = expiresAt
-                    ? Math.max(0, Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-                    : 0;
-
-                  return (
-                    <tr key={u.id} className="hover:bg-neutral-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-neutral-900">{u.name || "Sin nombre"}</div>
-                        <div className="text-xs text-neutral-400">{u.email}</div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
-                          u.role === "SUPERADMIN" ? "bg-purple-100 text-purple-700" : "bg-neutral-100 text-neutral-600"
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                          !isExpired
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50"
-                            : "bg-red-50 text-red-600 border border-red-200/50"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${!isExpired ? "bg-emerald-500" : "bg-red-500"}`}></span>
-                          {!isExpired ? `${daysLeft} días restantes` : "Expirada"}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-4 text-xs text-neutral-500">
-                        {expiresAt ? expiresAt.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Sin fecha"}
-                      </td>
-
-                      <td className="px-6 py-4 text-xs text-neutral-600">
-                        {u._count.telegramAccounts} cuenta(s)
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleRechargeDays(u.id, 1)}
-                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium rounded-lg transition-colors"
-                            title="Añadir 1 día de membresía"
-                          >
-                            +1 Día ($1)
-                          </button>
-                          <button
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleRechargeDays(u.id, 7)}
-                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium rounded-lg transition-colors"
-                            title="Añadir 7 días de membresía"
-                          >
-                            +7 Días
-                          </button>
-                          <button
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleRechargeDays(u.id, 30)}
-                            className="px-2.5 py-1 bg-black text-white hover:bg-neutral-800 text-xs font-medium rounded-lg transition-colors"
-                            title="Añadir 30 días de membresía"
-                          >
-                            +30 Días
-                          </button>
-                          <button
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleToggleStatus(u.id, u.isActive)}
-                            className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
-                              u.isActive ? "text-neutral-400 hover:text-red-600" : "text-emerald-600 bg-emerald-50"
-                            }`}
-                            title={u.isActive ? "Desactivar cliente" : "Activar cliente"}
-                          >
-                            {u.isActive ? "Bloquear" : "Activar"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="text-3xl font-black text-emerald-600 tracking-tight">
+            {stats?.activeSubscriptions ?? "—"}
+          </div>
+          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
+            Cobrando $1 o $2 / día
           </div>
         </div>
-      </main>
+
+        {/* Card 3 */}
+        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center justify-between text-neutral-400 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Cuentas Telegram</span>
+            <div className="w-9 h-9 rounded-xl bg-sky-50 text-[#229ED9] flex items-center justify-center">
+              <Send className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
+            {stats?.totalTelegrams ?? "—"}
+          </div>
+          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
+            Protocolo MTProto GramJS
+          </div>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center justify-between text-neutral-400 mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Campañas Globales</span>
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Activity className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
+            {stats?.totalCampaigns ?? "—"}
+          </div>
+          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
+            Envíos automáticos a grupos
+          </div>
+        </div>
+
+      </div>
+
+      {/* Módulos de Acceso Rápido y Estado */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Banner de Inicio Rápido: Conectar tu primer Telegram */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-7 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#229ED9] text-xs font-bold mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#229ED9]"></span>
+              Paso Prioritario
+            </div>
+            <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
+              Vincular tu Primera Cuenta de Telegram
+            </h2>
+            <p className="text-xs text-neutral-500 mt-2 leading-relaxed max-w-lg">
+              Conecta tu número de teléfono personal directamente por protocolo MTProto. El sistema autenticará tu sesión y podrás verificar los grupos donde estás unido para programar autopublicaciones.
+            </p>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-4">
+            <div className="text-xs text-neutral-500 font-medium">
+              Estado: <span className="text-amber-600 font-semibold">Listo para vincular</span>
+            </div>
+            <Link
+              href="/admin/telegram"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            >
+              <span>Configurar Cuenta de Telegram</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Guía Rápida para el Dueño */}
+        <div className="bg-white rounded-2xl p-7 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+          <div>
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-800 flex items-center justify-center mb-4">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-bold text-neutral-900">
+              Manual del SuperAdmin
+            </h3>
+            <p className="text-xs text-neutral-500 mt-2 leading-relaxed">
+              Aprende cómo funciona el corte automático diario ($1-$2/día), cómo recargar saldo a un cliente y cómo supervisar las sesiones.
+            </p>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-neutral-100">
+            <Link
+              href="/admin/guide"
+              className="text-xs font-bold text-[#229ED9] hover:underline inline-flex items-center gap-1"
+            >
+              <span>Abrir Manual Completo</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
