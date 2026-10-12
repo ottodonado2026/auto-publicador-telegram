@@ -63,11 +63,11 @@ export default function ClientDashboard() {
       <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-black/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center shadow-sm">
+            <div className="w-9 h-9 rounded-2xl bg-black text-white flex items-center justify-center shadow-sm">
               <Send className="w-4 h-4 -rotate-12 translate-x-[-1px] translate-y-[-1px]" />
             </div>
             <div>
-              <span className="font-semibold text-base tracking-tight text-neutral-900">TeleBlast</span>
+              <span className="font-bold text-base tracking-tight text-neutral-900">Ott<span className="text-neutral-500 font-semibold">Bot</span></span>
             </div>
           </div>
 
