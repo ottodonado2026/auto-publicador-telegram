@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const session = await requireAuth();
 
-    const [campaigns, telegramAccount, membership] = await Promise.all([
+    const [campaigns, telegramAccount, membership, user] = await Promise.all([
       prisma.campaign.findMany({
         where: { userId: session.userId },
         include: {
@@ -27,12 +27,24 @@ export async function GET() {
         where: { userId: session.userId },
       }),
       validateUserSubscription(session.userId),
+      prisma.user.findUnique({
+        where: { id: session.userId },
+        select: {
+          id: true,
+          email: true,
+          storeName: true,
+          name: true,
+          phoneNumber: true,
+          role: true,
+        },
+      }),
     ]);
 
     return NextResponse.json({
       campaigns,
       telegramAccount,
       membership,
+      user,
     });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
@@ -97,6 +109,13 @@ export async function POST(req: NextRequest) {
         status: "ACTIVE",
         nextRunAt: new Date(),
       },
+    });
+
+    // Disparar la primera ronda de difusión en segundo plano
+    import("@/lib/broadcaster").then(({ runCampaignBroadcast }) => {
+      runCampaignBroadcast(campaign.id).catch((err) =>
+        console.error("Error en difusión automática inicial:", err)
+      );
     });
 
     return NextResponse.json({ success: true, campaign });
