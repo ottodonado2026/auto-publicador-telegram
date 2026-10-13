@@ -5,16 +5,24 @@ import { validateUserSubscription } from "@/lib/membership";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await requireAuth();
+    const { searchParams } = new URL(req.url);
+    const requestedUserId = searchParams.get("userId");
+    const isAdminQuery = searchParams.get("admin") === "true";
+
+    const targetUserId =
+      isAdminQuery && requestedUserId && session.role === "SUPERADMIN"
+        ? requestedUserId
+        : session.userId;
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     const [campaigns, telegramAccounts, membership, user, todayLogs] = await Promise.all([
       prisma.campaign.findMany({
-        where: { userId: session.userId },
+        where: { userId: targetUserId },
         include: {
           telegramAccount: {
             select: {
@@ -37,12 +45,12 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
       }),
       prisma.telegramAccount.findMany({
-        where: { userId: session.userId },
+        where: { userId: targetUserId },
         orderBy: { createdAt: "asc" },
       }),
-      validateUserSubscription(session.userId),
+      validateUserSubscription(targetUserId),
       prisma.user.findUnique({
-        where: { id: session.userId },
+        where: { id: targetUserId },
         select: {
           id: true,
           botCode: true,
@@ -57,7 +65,7 @@ export async function GET() {
       }),
       prisma.messageLog.findMany({
         where: {
-          campaign: { userId: session.userId },
+          campaign: { userId: targetUserId },
           status: "SENT",
           createdAt: { gte: startOfDay },
         },
@@ -122,6 +130,9 @@ export async function GET() {
         sentToday >= perCampaignQuota || todayLogs.length >= maxDailyPosts;
       return {
         ...c,
+        messageText: c.messageContent,
+        targetGroups: Array.isArray(c.targetGroupIds) ? c.targetGroupIds : [],
+        recentLogs: c.logs || [],
         sentToday,
         dailyQuota: perCampaignQuota,
         isDailyCycleCompleted,

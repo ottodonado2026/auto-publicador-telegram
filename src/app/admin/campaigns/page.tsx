@@ -124,7 +124,7 @@ export default function AdminCampaignsPage() {
   };
 
   const getLogStatus = (status: string) => {
-    if (status === "SUCCESS") return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />;
+    if (status === "SENT" || status === "SUCCESS") return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />;
     if (status === "FAILED") return <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />;
     return <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />;
   };
