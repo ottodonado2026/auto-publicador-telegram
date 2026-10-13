@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
-import { pendingTelegramAuths, cleanPhoneNumber } from "@/lib/telegram";
+import { createTelegramClient, cleanPhoneNumber } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -17,23 +17,39 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = cleanPhoneNumber(phoneNumber);
-    const pending = pendingTelegramAuths.get(cleanPhone);
 
-    if (!pending || !pending.client || !pending.loginUserId) {
+    // Recuperar sesión pendiente persistida en Neon
+    const pending = await prisma.pendingAuthSession.findUnique({
+      where: { phoneNumber: cleanPhone },
+    });
+
+    if (!pending || new Date() > pending.expiresAt) {
       return NextResponse.json(
         { error: "La sesión de verificación ha expirado o no existe. Por favor solicita un nuevo código iniciando sesión." },
         { status: 400 }
       );
     }
 
-    const { client, phoneCodeHash, loginUserId } = pending;
+    const sessionData = JSON.parse(pending.dataJson || "{}");
+    const loginUserId = sessionData.loginUserId;
+
+    if (!loginUserId) {
+      return NextResponse.json(
+        { error: "Datos de sesión inválidos. Por favor vuelve a iniciar sesión." },
+        { status: 400 }
+      );
+    }
+
+    // Reconstruir cliente MTProto con la sesión persistida
+    const client = createTelegramClient(pending.sessionString);
+    await client.connect();
 
     // Verificar el código recibido en Telegram MTProto
     try {
       await (client as any).invoke(
         new (await import("telegram/tl")).Api.auth.SignIn({
           phoneNumber: cleanPhone,
-          phoneCodeHash,
+          phoneCodeHash: pending.phoneCodeHash,
           phoneCode: phoneCode.trim(),
         })
       );
@@ -44,7 +60,6 @@ export async function POST(req: NextRequest) {
             password: password2fa,
           });
         } else {
-          // El código de 5 dígitos fue válido, pero Telegram pide 2FA de Telegram
           return NextResponse.json({
             require2fa: true,
             message: "Tu cuenta de Telegram tiene contraseña de verificación en dos pasos (2FA). Ingrésala para continuar.",
@@ -69,8 +84,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Limpiar estado temporal en memoria
-    pendingTelegramAuths.delete(cleanPhone);
+    // Limpiar sesión pendiente de Neon
+    await prisma.pendingAuthSession.delete({
+      where: { phoneNumber: cleanPhone },
+    }).catch(() => null);
 
     // Firmar JWT
     const token = signToken({

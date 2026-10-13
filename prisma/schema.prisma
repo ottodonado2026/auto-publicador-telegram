@@ -190,3 +190,15 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model PendingAuthSession {
+  id            String   @id @default(uuid())
+  phoneNumber   String   @unique
+  phoneCodeHash String
+  sessionString String   // Sesión MTProto GramJS persistente para Serverless
+  dataJson      String?  // Datos de registro o login en JSON
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@map("pending_auth_sessions")
+}

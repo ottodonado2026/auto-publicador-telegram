@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
 import { encrypt } from "@/lib/crypto";
-import { pendingTelegramAuths, cleanPhoneNumber } from "@/lib/telegram";
+import { createTelegramClient, cleanPhoneNumber } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -18,23 +18,37 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = cleanPhoneNumber(phoneNumber);
-    const pending = pendingTelegramAuths.get(cleanPhone);
 
-    if (!pending || !pending.client || !pending.registerData) {
+    // Buscar la sesión pendiente en Neon (Serverless persistent)
+    const pending = await prisma.pendingAuthSession.findUnique({
+      where: { phoneNumber: cleanPhone },
+    });
+
+    if (!pending || new Date() > pending.expiresAt) {
       return NextResponse.json(
         { error: "La sesión de verificación ha expirado o no existe. Por favor solicita un nuevo código." },
         { status: 400 }
       );
     }
 
-    const { client, phoneCodeHash, registerData } = pending;
+    const registerData = JSON.parse(pending.dataJson || "{}");
+    if (!registerData.passwordHash) {
+      return NextResponse.json(
+        { error: "Datos de registro incompletos. Por favor vuelve a intentarlo." },
+        { status: 400 }
+      );
+    }
 
-    // Verificar el código mediante Telegram MTProto
+    // Reconstruir el cliente GramJS con la sesión persistida
+    const client = createTelegramClient(pending.sessionString);
+    await client.connect();
+
+    // Validar el código mediante Telegram MTProto
     try {
       await (client as any).invoke(
         new (await import("telegram/tl")).Api.auth.SignIn({
           phoneNumber: cleanPhone,
-          phoneCodeHash,
+          phoneCodeHash: pending.phoneCodeHash,
           phoneCode: phoneCode.trim(),
         })
       );
@@ -59,17 +73,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Extraer sesión GramJS y datos de Telegram
-    let sessionString = "";
+    // Extraer sesión final y datos de usuario de Telegram
+    let finalSessionString = "";
     let me: any = null;
     try {
-      sessionString = (client.session as any).save();
+      finalSessionString = (client.session as any).save();
       me = await client.getMe();
     } catch (err) {
       console.warn("No se pudo obtener sesión persistente o getMe de Telegram:", err);
     }
 
-    // Calcular exactamente 24 horas de prueba gratuita (Trial)
+    // 24 horas exactas de prueba gratuita (Trial)
     const trialExpiry = new Date();
     trialExpiry.setHours(trialExpiry.getHours() + 24);
 
@@ -93,11 +107,11 @@ export async function POST(req: NextRequest) {
             expiresAt: trialExpiry,
           },
         },
-        ...(sessionString ? {
+        ...(finalSessionString ? {
           telegramAccounts: {
             create: {
               phoneNumber: cleanPhone,
-              sessionString: encrypt(sessionString),
+              sessionString: encrypt(finalSessionString),
               telegramUserId: String(me?.id || ""),
               firstName: me?.firstName || registerData.storeName || "",
               username: me?.username || null,
@@ -109,8 +123,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Limpiar estado temporal de memoria
-    pendingTelegramAuths.delete(cleanPhone);
+    // Limpiar sesión pendiente de Neon
+    await prisma.pendingAuthSession.delete({
+      where: { phoneNumber: cleanPhone },
+    }).catch(() => null);
 
     // Generar JWT seguro
     const token = signToken({
@@ -137,7 +153,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 

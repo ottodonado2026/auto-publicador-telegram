@@ -6,7 +6,6 @@ import {
   TELEGRAM_API_ID, 
   TELEGRAM_API_HASH, 
   createTelegramClient, 
-  pendingTelegramAuths, 
   cleanPhoneNumber 
 } from "@/lib/telegram";
 
@@ -105,13 +104,24 @@ export async function POST(req: NextRequest) {
         clientPhone
       );
 
-      // Guardar en pendingAuth para validar en el siguiente paso
-      pendingTelegramAuths.set(clientPhone, {
-        client,
-        phoneCodeHash,
-        phoneNumber: clientPhone,
-        createdAt: Date.now(),
-        loginUserId: user.id,
+      const sessionString = (client.session as any).save();
+
+      // Guardar en Neon con expiración de 10 minutos
+      await prisma.pendingAuthSession.upsert({
+        where: { phoneNumber: clientPhone },
+        create: {
+          phoneNumber: clientPhone,
+          phoneCodeHash,
+          sessionString,
+          dataJson: JSON.stringify({ loginUserId: user.id }),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
+        update: {
+          phoneCodeHash,
+          sessionString,
+          dataJson: JSON.stringify({ loginUserId: user.id }),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
       });
 
       const maskedPhone =
@@ -127,7 +137,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Si es un usuario legacy sin teléfono asignado, iniciar sesión directamente
+    // Si es un usuario sin teléfono asignado, iniciar sesión directamente
     const token = signToken({
       userId: user.id,
       email: user.email || user.phoneNumber || "",

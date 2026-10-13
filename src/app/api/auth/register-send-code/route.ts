@@ -5,19 +5,29 @@ import {
   TELEGRAM_API_ID, 
   TELEGRAM_API_HASH, 
   createTelegramClient, 
-  pendingTelegramAuths, 
   cleanPhoneNumber 
 } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
+// Regex estricto para validar correos reales
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export async function POST(req: NextRequest) {
   try {
     const { storeName, phoneNumber, email, password } = await req.json();
 
-    if (!storeName || !phoneNumber || !password) {
+    if (!storeName || !phoneNumber || !email || !password) {
       return NextResponse.json(
-        { error: "Nombre de tienda, número de Telegram y contraseña son obligatorios" },
+        { error: "Nombre de tienda, número de Telegram, correo y contraseña son obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return NextResponse.json(
+        { error: "Por favor ingresa un correo electrónico real y válido (ejemplo: usuario@dominio.com)" },
         { status: 400 }
       );
     }
@@ -37,7 +47,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar si el teléfono ya está registrado
+    // Validar si el teléfono ya está registrado en usuarios
     const existingPhone = await prisma.user.findFirst({
       where: { phoneNumber: cleanPhone },
     });
@@ -49,20 +59,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar si el correo ya está registrado (si fue ingresado)
-    if (email && email.trim()) {
-      const existingEmail = await prisma.user.findFirst({
-        where: { email: email.trim().toLowerCase() },
-      });
-      if (existingEmail) {
-        return NextResponse.json(
-          { error: "Este correo electrónico ya está registrado con otra cuenta." },
-          { status: 409 }
-        );
-      }
+    // Validar si el correo ya está registrado en usuarios
+    const existingEmail = await prisma.user.findFirst({
+      where: { email: cleanEmail },
+    });
+
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: "Este correo electrónico ya está registrado con otra cuenta." },
+        { status: 409 }
+      );
     }
 
-    // Hashear la contraseña por adelantado
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Instanciar cliente GramJS MTProto y conectar
@@ -78,17 +86,37 @@ export async function POST(req: NextRequest) {
       cleanPhone
     );
 
-    // Almacenar en memoria pendiente de verificación
-    pendingTelegramAuths.set(cleanPhone, {
-      client,
-      phoneCodeHash,
-      phoneNumber: cleanPhone,
-      createdAt: Date.now(),
-      registerData: {
-        storeName: storeName.trim(),
-        email: email && email.trim() ? email.trim().toLowerCase() : undefined,
-        passwordHash,
-        name: storeName.trim(),
+    // Guardar la sesión generada en StringSession de GramJS
+    const sessionString = (client.session as any).save();
+
+    // Persistir de forma atómica en Neon (válido por 10 minutos)
+    // Esto garantiza que funcione en entornos Serverless de Vercel sin importar qué función atienda el verify
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.pendingAuthSession.upsert({
+      where: { phoneNumber: cleanPhone },
+      create: {
+        phoneNumber: cleanPhone,
+        phoneCodeHash,
+        sessionString,
+        dataJson: JSON.stringify({
+          storeName: storeName.trim(),
+          email: cleanEmail,
+          passwordHash,
+          name: storeName.trim(),
+        }),
+        expiresAt,
+      },
+      update: {
+        phoneCodeHash,
+        sessionString,
+        dataJson: JSON.stringify({
+          storeName: storeName.trim(),
+          email: cleanEmail,
+          passwordHash,
+          name: storeName.trim(),
+        }),
+        expiresAt,
       },
     });
 
