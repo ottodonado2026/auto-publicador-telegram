@@ -100,8 +100,8 @@ export default function AdminPlansPage() {
         </button>
       </div>
 
-      {/* Grid de Planes con Beneficios y Métricas Clave */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Grid de Planes con Beneficios y Métricas Clave (2 arriba y 2 abajo para mayor amplitud) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-7 mb-8">
         {plans.map((p) => {
           const isEditing = editingId === p.id;
 

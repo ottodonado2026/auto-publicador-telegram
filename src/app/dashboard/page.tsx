@@ -2,269 +2,247 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import ClientSidebar from "@/components/ClientSidebar";
 import { 
-  Send, Shield, Clock, Plus, Play, Pause, AlertCircle, 
-  CheckCircle2, LogOut, MessageSquare, PhoneCall, KeyRound, Sparkles
+  Send, Plus, Play, Pause, AlertCircle, Clock, 
+  CheckCircle2, Layers, MessageSquare, Activity, ExternalLink, RefreshCw
 } from "lucide-react";
 
 export default function ClientDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [membership, setMembership] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Estados de conexión Telegram
-  const [telegramStatus, setTelegramStatus] = useState<"DISCONNECTED" | "CODE_SENT" | "CONNECTED">("DISCONNECTED");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [phoneCode, setPhoneCode] = useState("");
-  const [phoneCodeHash, setPhoneCodeHash] = useState("");
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [telegramError, setTelegramError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchSession();
-  }, []);
-
-  const fetchSession = async () => {
+  const fetchDashboard = async () => {
     try {
-      const res = await fetch("/api/auth/me");
-      if (!res.ok) {
+      setLoading(true);
+      const res = await fetch("/api/campaigns");
+      if (res.status === 401) {
         router.push("/login");
         return;
       }
-      const data = await res.json();
-      setUser(data.user);
-      setMembership(data.membership);
-    } catch {
-      router.push("/login");
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const toggleCampaign = async (id: string, currentStatus: string) => {
+    try {
+      setActionLoading(id);
+      const newStatus = currentStatus === "ACTIVE" ? "PAUSED" : "ACTIVE";
+      const res = await fetch("/api/campaigns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: newStatus }),
+      });
+      if (res.ok) {
+        fetchDashboard();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#E9ECF0] flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-[#229ED9] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
+  const membership = data?.membership;
+  const campaigns = data?.campaigns || [];
+  const telegram = data?.telegramAccount;
   const isExpired = !membership?.hasAccess;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F] selection:bg-black selection:text-white">
-      {/* Navbar Superior tipo Apple */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-white/80 border-b border-black/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-black text-white flex items-center justify-center shadow-sm">
-              <Send className="w-4 h-4 -rotate-12 translate-x-[-1px] translate-y-[-1px]" />
-            </div>
-            <div>
-              <span className="font-bold text-base tracking-tight text-neutral-900">Ott<span className="text-neutral-500 font-semibold">Bot</span></span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#E9ECF0] text-[#111827] flex">
+      <ClientSidebar user={data?.user} membership={membership} />
 
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <div className="text-xs font-medium text-neutral-900">{user?.name || user?.email}</div>
-              <div className="text-[11px] text-neutral-400">Cliente</div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-xs font-medium text-neutral-600 hover:text-red-600 py-1.5 px-3 rounded-xl hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Salir</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Banner de Membresía / Pago Diario (Zero Trust) */}
+      <main className="flex-1 ml-64 p-8 max-w-6xl w-full mx-auto">
+        {/* Banner de Membresía */}
         {isExpired ? (
-          <div className="mb-8 p-5 bg-red-50 border border-red-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-red-700">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3.5 text-red-700">
+              <AlertCircle className="w-6 h-6 flex-shrink-0" />
               <div>
-                <div className="text-sm font-semibold">Tu suscripción ha expirado</div>
-                <div className="text-xs text-red-600/90 mt-0.5">
-                  Las campañas de publicación se han pausado automáticamente. Contacta al administrador para recargar tus días ($1 o $2 / día).
-                </div>
+                <h3 className="text-sm font-bold">Membresía Vencida — Envíos Pausados</h3>
+                <p className="text-xs text-red-600/90 mt-0.5">
+                  Tus campañas están temporalmente en pausa. Recarga tus días ($1.25/día o paquete con descuento) para reactivar los envíos automáticos.
+                </p>
               </div>
             </div>
-            <a
-              href="https://t.me/"
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+            <Link
+              href="/dashboard/plans"
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all whitespace-nowrap"
             >
-              Renovar Membresía
-            </a>
+              Renovar Planes
+            </Link>
           </div>
         ) : (
-          <div className="mb-8 p-5 bg-white border border-neutral-200/70 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+          <div className="mb-8 p-5 bg-white border border-neutral-300/80 rounded-2xl flex items-center justify-between shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <div className="text-xs text-neutral-400 font-medium">Estado de Membresía</div>
-                <div className="text-sm font-semibold text-neutral-900 flex items-center gap-2 mt-0.5">
-                  <span>{membership?.daysRemaining} días vigentes restantes</span>
-                  <span className="text-[11px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md font-medium uppercase">
-                    {membership?.status}
-                  </span>
-                </div>
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  Suscripción Activa
+                </span>
+                <span className="text-base font-extrabold text-[#0F172A]">
+                  {membership?.daysRemaining} días restantes vigentes
+                </span>
               </div>
             </div>
-            <div className="text-xs text-neutral-400">
-              Corte estricto automatizado vía Backend
-            </div>
+
+            <Link
+              href="/dashboard/plans"
+              className="text-xs font-bold text-[#229ED9] hover:underline"
+            >
+              Ver paquetes y tarifas →
+            </Link>
           </div>
         )}
 
-        {/* Sección: Conexión de Cuenta de Telegram MTProto */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Tarjeta de Telegram Account */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/70 shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-neutral-900 tracking-tight">Tu Cuenta de Telegram</h2>
-              <span className="p-2 rounded-xl bg-neutral-100 text-neutral-600">
-                <Send className="w-4 h-4" />
-              </span>
-            </div>
-
-            <p className="text-xs text-neutral-500 mb-6 leading-relaxed">
-              Vincula tu cuenta personal para que el robot difunda directamente en todos los grupos donde ya perteneces.
+        {/* Header de Campañas */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-black text-[#0F172A] tracking-tight">
+              Mis Campañas & Progreso de Envíos
+            </h1>
+            <p className="text-xs text-neutral-500 font-semibold mt-1">
+              Monitorea el avance de tus publicaciones automáticas en tiempo real.
             </p>
-
-            {telegramError && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-200/60">
-                {telegramError}
-              </div>
-            )}
-
-            {telegramStatus === "DISCONNECTED" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1.5">
-                    Número de teléfono internacional
-                  </label>
-                  <div className="relative">
-                    <PhoneCall className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="tel"
-                      placeholder="+573001234567"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={telegramLoading || !phoneNumber}
-                  onClick={() => {
-                    setTelegramLoading(true);
-                    setTimeout(() => {
-                      setTelegramLoading(false);
-                      setTelegramStatus("CODE_SENT");
-                    }, 1000);
-                  }}
-                  className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
-                >
-                  {telegramLoading ? "Enviando código..." : "Enviar Código de Validación"}
-                </button>
-              </div>
-            )}
-
-            {telegramStatus === "CODE_SENT" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1.5">
-                    Código de confirmación de Telegram
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Ej. 12345"
-                      value={phoneCode}
-                      onChange={(e) => setPhoneCode(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-200/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all text-center tracking-widest font-mono text-base"
-                    />
-                  </div>
-                  <span className="text-[11px] text-neutral-400 mt-1 block">
-                    Revisa tus mensajes en la app de Telegram.
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={telegramLoading || !phoneCode}
-                  onClick={() => {
-                    setTelegramLoading(true);
-                    setTimeout(() => {
-                      setTelegramLoading(false);
-                      setTelegramStatus("CONNECTED");
-                    }, 1000);
-                  }}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all disabled:opacity-50"
-                >
-                  {telegramLoading ? "Verificando..." : "Confirmar y Vincular"}
-                </button>
-              </div>
-            )}
-
-            {telegramStatus === "CONNECTED" && (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/70 text-center">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-                <div className="text-sm font-semibold text-emerald-900">Telegram Conectado</div>
-                <div className="text-xs text-emerald-700 mt-0.5">{phoneNumber || "+57300..."}</div>
-                <div className="mt-4 pt-3 border-t border-emerald-200/60">
-                  <span className="text-[11px] text-emerald-800">Sesión MTProto Cifrada Activa</span>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Tarjeta de Campañas y Difusión */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/70 shadow-[0_8px_30px_rgb(0,0,0,0.04)] lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-base font-bold text-neutral-900 tracking-tight">Campañas de Publicación</h2>
-                <p className="text-xs text-neutral-500 mt-0.5">Mensajes programados para envío automático a tus grupos.</p>
-              </div>
-              <button
-                disabled={isExpired}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-black hover:bg-neutral-800 text-white text-xs font-semibold rounded-xl shadow-sm transition-all disabled:opacity-40"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nueva Campaña</span>
-              </button>
-            </div>
-
-            {/* Empty state de campañas estilo Apple */}
-            <div className="rounded-2xl border border-dashed border-neutral-200 p-10 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-3 text-neutral-400">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <h3 className="text-sm font-semibold text-neutral-900">Aún no tienes campañas activas</h3>
-              <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
-                Crea tu primer copy con fotos o enlaces para que se difunda de forma periódica en todos los grupos donde estás unido.
-              </p>
-            </div>
-          </div>
+          <Link
+            href="/dashboard/campaigns"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Crear Nuevo Copy</span>
+          </Link>
         </div>
+
+        {/* Lista de Campañas con Barra de Progreso en Vivo */}
+        {campaigns.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-neutral-300 p-12 text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4 text-neutral-400">
+              <MessageSquare className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-bold text-neutral-900">Aún no has creado campañas</h3>
+            <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              Crea tu primer copy con texto formateado, negritas, emojis y enlaces. Podrás ver la vista previa exacta en Telegram antes de publicar.
+            </p>
+            <Link
+              href="/dashboard/campaigns"
+              className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-[#229ED9] hover:bg-[#1E88E5] text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Diseñar mi Primer Copy</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {campaigns.map((c: any) => {
+              const targetCount = Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 1;
+              const sentCount = c._count?.logs || 0;
+              const progressPercent = Math.min(100, Math.round((sentCount / Math.max(1, targetCount * 5)) * 100));
+
+              return (
+                <div
+                  key={c.id}
+                  className="bg-white rounded-3xl p-6 border border-neutral-300/80 shadow-[0_4px_16px_rgba(0,0,0,0.03)]"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h2 className="text-base font-bold text-neutral-900">{c.name}</h2>
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          c.status === "ACTIVE" 
+                            ? "bg-emerald-100 text-emerald-700" 
+                            : "bg-neutral-100 text-neutral-600"
+                        }`}>
+                          {c.status === "ACTIVE" ? "Activo" : "Pausado"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-400 mt-1">
+                        Intervalo: Cada {c.intervalMinutes} minutos • Grupos asignados: {targetCount}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={actionLoading === c.id}
+                        onClick={() => toggleCampaign(c.id, c.status)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                          c.status === "ACTIVE"
+                            ? "bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border border-neutral-300"
+                            : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                        }`}
+                      >
+                        {c.status === "ACTIVE" ? (
+                          <>
+                            <Pause className="w-3.5 h-3.5" />
+                            <span>Pausar</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5" />
+                            <span>Activar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Barra de Progreso en Tiempo Real */}
+                  <div className="bg-[#F8FAFC] rounded-2xl p-4 border border-neutral-200 mb-4">
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <span className="font-bold text-neutral-700 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-[#229ED9] animate-pulse" />
+                        Progreso de Publicaciones
+                      </span>
+                      <span className="font-extrabold text-neutral-900">
+                        {sentCount} envíos registrados
+                      </span>
+                    </div>
+
+                    <div className="w-full h-3 bg-neutral-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#229ED9] to-emerald-500 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(5, progressPercent)}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px] text-neutral-400 mt-2 font-medium">
+                      <span>Delay de seguridad: 60s entre envíos</span>
+                      <span>Descanso entre rondas activo</span>
+                    </div>
+                  </div>
+
+                  {/* Extracto del Copy */}
+                  <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-700 font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                    {c.messageContent}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );
