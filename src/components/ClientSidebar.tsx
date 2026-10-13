@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Send, PlusCircle, MessageSquare, 
-  CreditCard, LogOut, CheckCircle2, AlertCircle, Clock
+  CreditCard, LogOut, Clock, Sun, Moon
 } from "lucide-react";
 
 interface ClientSidebarProps {
@@ -15,6 +16,7 @@ interface ClientSidebarProps {
 export default function ClientSidebar({ user, membership }: ClientSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -25,23 +27,24 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
   const navItems = [
     { name: "Mis Campañas & Envíos", href: "/dashboard", icon: LayoutDashboard },
     { name: "Crear Nuevo Copy", href: "/dashboard/campaigns", icon: PlusCircle },
-    { name: "Vincular mi Telegram", href: "/dashboard/telegram", icon: Send },
-    { name: "Recargar Membresía", href: "/dashboard/plans", icon: CreditCard },
+    { name: "Vincular mi Telegram", href: "/admin/telegram", icon: Send },
+    { name: "Recargar Membresía", href: "/admin/plans", icon: CreditCard },
   ];
 
   const hasAccess = membership?.hasAccess;
+  const isDark = theme === "dark";
 
   return (
     <aside className="w-64 bg-[#1E2229] border-r border-[#2B303C] flex flex-col justify-between h-screen fixed left-0 top-0 z-50 select-none">
-      {/* Brand Header */}
+      {/* Brand Header con Logo Oficial de OttBot */}
       <div>
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-[#2B303C]">
-          <div className="w-9 h-9 rounded-xl bg-[#229ED9] text-white flex items-center justify-center shadow-[0_4px_14px_rgba(34,158,217,0.35)] animate-float">
-            <Send className="w-4 h-4 -rotate-12 translate-x-[-1px] translate-y-[-1px] fill-white" />
+        <div className="h-20 flex items-center gap-3 px-5 border-b border-[#2B303C]">
+          <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-sky-400 shadow-[0_4px_16px_rgba(34,158,217,0.4)] flex-shrink-0 animate-float">
+            <img src="/ottbot-logo.png" alt="OttBot Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white text-base tracking-tight">Ott<span className="text-[#229ED9]">Bot</span></span>
+              <span className="font-extrabold text-white text-base tracking-tight">Ott<span className="text-[#229ED9]">Bot</span></span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 uppercase tracking-wider border border-emerald-800">
                 PRO
               </span>
@@ -76,9 +79,23 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
         </nav>
       </div>
 
-      {/* Info Membresía & Usuario */}
-      <div className="p-4 border-t border-[#2B303C] space-y-3">
-        <div className="bg-[#171A1F] rounded-2xl p-3.5 border border-[#2B303C]">
+      {/* Info Membresía, Switcher de Tema y Usuario */}
+      <div className="p-4 border-t border-[#2B303C] space-y-2.5">
+        {/* Toggle Tema Claro / Oscuro para el Cliente */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-[#171A20] text-neutral-300 border border-[#2B303C] hover:border-[#229ED9] transition-all"
+        >
+          <span className="flex items-center gap-2">
+            {isDark ? <Moon className="w-3.5 h-3.5 text-blue-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+            <span>Tema: {isDark ? "Oscuro" : "Claro"}</span>
+          </span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#2B303C] text-neutral-400">
+            Cambiar
+          </span>
+        </button>
+
+        <div className="bg-[#171A20] rounded-2xl p-3.5 border border-[#2B303C]">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] font-bold text-neutral-400 uppercase">Estado Membresía</span>
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${

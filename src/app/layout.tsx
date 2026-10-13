@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 export const metadata: Metadata = {
-  title: "OttBot — Plataforma SaaS de Autopublicación en Telegram",
-  description: "Automatización, difusión inteligente y autopublicación en grupos de Telegram con precisión quirúrgica.",
+  title: "OttBot — Publica en Telegram Automáticamente",
+  description: "Plataforma SaaS para autopublicación inteligente, difusión masiva en grupos de Telegram con precisión quirúrgica.",
 };
 
 export default function RootLayout({
@@ -12,9 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-[#F5F5F7] text-[#1D1D1F]">
-        {children}
+    <html lang="es" className="dark h-full antialiased">
+      <body className="min-h-full flex flex-col font-sans transition-colors duration-200">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
