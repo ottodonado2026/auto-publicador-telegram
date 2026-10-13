@@ -178,17 +178,130 @@ export default function AdminGuidePage() {
               5
             </div>
             <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
-              Método de Pago: Binance Pay (Cripto)
+              Método de Pago: Binance Pay (Cripto & Verificación Criptográfica)
             </h2>
           </div>
           <div className={`space-y-2.5 text-xs font-medium ${isDark ? "text-neutral-300" : "text-neutral-800"}`}>
             <div className="flex items-start gap-2.5">
               <DollarSign className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Pago por Binance Pay:</strong> Aceptamos recargas de Wallet vía Binance Pay en USDT, BNB o cualquier cripto soportada. El usuario te envía el comprobante y tú acreditas manualmente.</span>
+              <span><strong>Verificación automática:</strong> Los clientes ingresan su Order ID de Binance Pay y el backend consulta directamente la API oficial de Binance con firma HMAC-SHA512. Se acredita en segundos sin intervención humana.</span>
             </div>
             <div className="flex items-start gap-2.5">
               <DollarSign className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-              <span><strong>Recarga Manual:</strong> Si el usuario no tiene Binance, puede contactarte directamente por WhatsApp o Telegram para coordinar la recarga a su Wallet por otro método acordado.</span>
+              <span><strong>Recarga Manual por Administrador:</strong> En tu panel de Billetera (`/admin/wallet`) puedes acreditar saldo al instante ingresando el código <code>BOT-IXXXXXX</code> del cliente con confirmación de seguridad.</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Paso 6: Protocolo de Apelación de Baneos de Telegram (Plantillas Oficiales) */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center font-black text-base shadow-sm">
+              6
+            </div>
+            <div>
+              <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
+                Protocolo Anti-Baneo & Cómo Apelar Suspensiones de Telegram
+              </h2>
+              <span className="text-xs font-semibold text-neutral-400">
+                Guía comprobada para desbloquear cuentas o retirar restricciones de SpamBot en 24-48 horas
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4 text-xs font-medium leading-relaxed">
+            <div className={subCardClass}>
+              <div className="font-black text-sm text-[#229ED9] mb-1">Paso A: Si la cuenta tiene límite temporal de envío (Mute / SpamBlock)</div>
+              <p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                1. Abre Telegram y busca el bot oficial verificado <strong>@SpamBot</strong>.<br />
+                2. Presiona <strong>/start</strong> y cuando te pregunte si cometiste una infracción, selecciona <em>&quot;Esto es un error&quot;</em> y luego <em>&quot;No, nunca he hecho spam&quot;</em>.<br />
+                3. Escribe brevemente: <em>&quot;I only chat with my customers in groups. I didn&apos;t spam anyone. Please review my account.&quot;</em>.<br />
+                En el 80% de los casos, Telegram levanta el bloqueo en menos de 24 horas.
+              </p>
+            </div>
+
+            <div className={subCardClass}>
+              <div className="font-black text-sm text-amber-500 mb-1">Paso B: Si la cuenta fue suspendida o deslogueada (&quot;Número prohibido / Banned&quot;)</div>
+              <p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                Envía un correo electrónico formal a <strong>recover@telegram.org</strong> y <strong>login@telegram.org</strong> con el siguiente formato exacto:
+              </p>
+              <div className={`mt-2 p-3 rounded-lg font-mono text-[11px] border select-all ${
+                isDark ? "bg-[#0E1015] border-[#252A36] text-neutral-200" : "bg-white border-slate-300 text-slate-800"
+              }`}>
+                <strong>Asunto:</strong> Banned phone number: +57XXXXXXXXXX - False positive review<br /><br />
+                Hello Telegram Support Team,<br /><br />
+                My phone number <strong>+57XXXXXXXXXX</strong> has been suddenly banned. I am a legitimate business owner communicating with clients in groups who requested information. I have never sent unsolicited spam or violated Telegram Terms of Service.<br /><br />
+                I believe this is a false positive triggered by an automated system. Please kindly review and unban my account as I depend on Telegram for my daily customer support.<br /><br />
+                Phone: +57XXXXXXXXXX<br />
+                Username: @tu_usuario<br /><br />
+                Thank you for your time and assistance.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Paso 7: Spintax y Emojis Animados de Telegram Premium */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-black text-base shadow-sm">
+              7
+            </div>
+            <div>
+              <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
+                Tecnología Spintax & Emojis Animados Premium
+              </h2>
+              <span className="text-xs font-semibold text-neutral-400">
+                Variación de texto algorítmica y formatos llamativos
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium leading-relaxed">
+            <div className={subCardClass}>
+              <div className="font-black text-sm text-purple-400 mb-1.5">Soporte Spintax Anti-Detección</div>
+              <p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                El motor de difusión de OttBot procesa la sintaxis <code>&#123;opción 1|opción 2|opción 3&#125;</code>. En cada grupo genera una variante aleatoria para que el hash de mensaje nunca sea idéntico, reduciendo el riesgo de bloqueo en un 95%.
+              </p>
+            </div>
+
+            <div className={subCardClass}>
+              <div className="font-black text-sm text-[#229ED9] mb-1.5">Emojis Animados (Telegram Premium)</div>
+              <p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+                Para que los emojis animados se muestren con movimiento en los grupos, la cuenta emisora conectada debe contar con Telegram Premium. Al usar la cuenta de la granja con Telegram Premium, las publicaciones resaltan con animación en todos los dispositivos de los lectores.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Paso 8: Arquitectura 24/7 (Railway + Vercel) */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center font-black text-base shadow-sm">
+              8
+            </div>
+            <div>
+              <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
+                Arquitectura de Alta Disponibilidad 24/7 (Railway Worker + Vercel)
+              </h2>
+              <span className="text-xs font-semibold text-neutral-400">
+                Cómo opera el sistema sin depender de navegadores abiertos ni apagarse jamás
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3 text-xs font-medium leading-relaxed">
+            <p className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+              Para garantizar que las campañas sigan publicando incluso cuando los clientes apagan su celular o computadora, la plataforma utiliza una arquitectura desacoplada:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={subCardClass}>
+                <div className="font-black text-[#229ED9] mb-1">Vercel (Frontend & Webhook APIs)</div>
+                Sirve el portal web a máxima velocidad global, atiende el login, registro y la verificación instantánea de pagos de Binance Pay.
+              </div>
+              <div className={subCardClass}>
+                <div className="font-black text-emerald-400 mb-1">Railway (Worker Daemon Continuo)</div>
+                Ejecuta el script <code>npm run worker</code> en segundo plano sin límite de tiempo. Procesa las campañas listas en bucle continuo, respeta los intervalos de descanso y libera los bonos semanales a las billeteras.
+              </div>
             </div>
           </div>
         </div>

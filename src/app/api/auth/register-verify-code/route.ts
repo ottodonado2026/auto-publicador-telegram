@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
 import { encrypt } from "@/lib/crypto";
 import { createTelegramClient, cleanPhoneNumber } from "@/lib/telegram";
+import { notifyAdminUserRegistered } from "@/lib/adminNotifier";
 
 export const dynamic = "force-dynamic";
 
@@ -93,10 +94,22 @@ export async function POST(req: NextRequest) {
 
     const generatedBotCode = `BOT-I${Math.floor(100000 + Math.random() * 900000)}`;
 
+    // Buscar si fue invitado por un código de referido
+    let referrerId: string | null = null;
+    if (registerData.refCode) {
+      const referrer = await prisma.user.findFirst({
+        where: { botCode: registerData.refCode },
+      });
+      if (referrer) {
+        referrerId = referrer.id;
+      }
+    }
+
     // Crear el usuario en Neon PostgreSQL
     const user = await prisma.user.create({
       data: {
         botCode: generatedBotCode,
+        referredById: referrerId,
         phoneNumber: cleanPhone,
         storeName: registerData.storeName,
         name: registerData.name || registerData.storeName,
@@ -127,6 +140,15 @@ export async function POST(req: NextRequest) {
         } : {}),
       },
     });
+
+    // Enviar alerta instantánea al Telegram del Administrador
+    notifyAdminUserRegistered({
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      storeName: user.storeName,
+      botCode: user.botCode,
+      referredByCode: registerData.refCode || null,
+    }).catch(() => {});
 
     // Limpiar sesión pendiente de Neon
     await prisma.pendingAuthSession.delete({

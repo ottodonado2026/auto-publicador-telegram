@@ -11,7 +11,13 @@ import {
   Play, Pause, Trash2, Edit3
 } from "lucide-react";
 
+import { calculateSpintaxCombinations } from "@/lib/spintax";
+
 const TEMPLATES = [
+  {
+    title: "🛡️ Spintax Anti-Baneo (Streaming)",
+    text: "{🔥|⚡|🚀} **{GRAN PROMOCIÓN|OFERTA EXCLUSIVA|DISPONIBLE HOY} EN STREAMING** {🔥|⚡|🚀}\n\n{Adquiere hoy|Pide ahora|Activa ya} tus cuentas con entrega inmediata:\n\n> 📺 Netflix Ultra HD 4K\n> 🍿 Disney+ Premium\n> 🎧 Spotify Familiar\n\n{✅ Cuentas 100% estables|✅ Garantía durante todo el mes}\n{⚡ Soporte rápido 24/7|⚡ Activación en 2 minutos}\n\n👇 **{Escríbeme al privado|Contáctame ya} para activar** 👇",
+  },
   {
     title: "⚡ Cuentas Streaming Pro",
     text: "🔥 **¡PROMOCIÓN EXCLUSIVA EN STREAMING!** 🔥\n\nAdquiere hoy tus pantallas y combos con entrega instantánea:\n\n> 📺 Netflix Ultra HD 4K\n> 🍿 Disney+ & Star+\n> 🎧 Spotify Familiar\n> ⚽ Win Sports & Paramount+\n\n✅ Garantía total durante todo el mes\n✅ Soporte inmediato 24/7\n\n👇 **¡Escríbeme ya al privado para activar tu cuenta!** 👇",
@@ -192,6 +198,26 @@ export default function ClientCampaignsPage() {
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + 1, start + 1);
+    }, 0);
+  };
+
+  const insertSpintax = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = messageContent.substring(start, end);
+    const replacement = selectedText.length > 0
+      ? `{${selectedText}|Alternativa 2|Alternativa 3}`
+      : `{Opción 1|Opción 2|Opción 3}`;
+    const newContent =
+      messageContent.substring(0, start) +
+      replacement +
+      messageContent.substring(end);
+    setMessageContent(newContent);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + 1, start + replacement.length - 1);
     }, 0);
   };
 
@@ -710,19 +736,43 @@ export default function ClientCampaignsPage() {
                         <CornerDownLeft className="w-3.5 h-3.5" />
                         <span className="text-[11px]">Salto Línea</span>
                       </button>
+
+                      <div className="h-4 w-[1px] bg-neutral-600/50 mx-1" />
+
+                      <button
+                        type="button"
+                        onClick={insertSpintax}
+                        className="p-1.5 rounded-lg bg-[#229ED9]/15 hover:bg-[#229ED9] text-[#229ED9] hover:text-white transition-all text-xs font-black flex items-center gap-1 border border-[#229ED9]/30"
+                        title="Insertar Spintax Anti-Baneo ({Opción 1|Opción 2|Opción 3})"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span className="text-[11px] font-mono">{"{a|b}"} Spintax</span>
+                      </button>
                     </div>
 
                     <textarea
                       ref={textareaRef}
                       required
                       rows={8}
-                      placeholder="Escribe tu mensaje o selecciona texto y haz clic en Negrita, Cursiva o Cita..."
+                      placeholder="Escribe tu mensaje o selecciona texto y haz clic en Negrita, Cursiva, Cita o Spintax..."
                       value={messageContent}
                       onChange={(e) => setMessageContent(e.target.value)}
                       className={`w-full p-4 rounded-2xl text-xs leading-relaxed font-sans focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] ${
                         isDark ? "bg-[#171A20] border-[#2D3340] text-white" : "bg-neutral-50 border-neutral-300 text-neutral-900"
                       }`}
                     />
+
+                    <div className="flex items-center justify-between text-[11px] mt-2 px-1">
+                      <span className={isDark ? "text-neutral-400" : "text-neutral-500"}>
+                        {messageContent.length} caracteres
+                      </span>
+                      {calculateSpintaxCombinations(messageContent) > 1 && (
+                        <span className="px-2.5 py-0.5 rounded-full font-bold bg-[#229ED9]/15 text-[#229ED9] border border-[#229ED9]/30 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3" />
+                          <span>~{calculateSpintaxCombinations(messageContent).toLocaleString()} variaciones únicas anti-baneo</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Carga de Imagen */}

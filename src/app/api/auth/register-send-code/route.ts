@@ -15,7 +15,7 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export async function POST(req: NextRequest) {
   try {
-    const { storeName, phoneNumber, email, password } = await req.json();
+    const { storeName, phoneNumber, email, password, refCode } = await req.json();
 
     if (!storeName || !phoneNumber || !email || !password) {
       return NextResponse.json(
@@ -90,8 +90,14 @@ export async function POST(req: NextRequest) {
     const sessionString = (client.session as any).save();
 
     // Persistir de forma atómica en Neon (válido por 10 minutos)
-    // Esto garantiza que funcione en entornos Serverless de Vercel sin importar qué función atienda el verify
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const pendingPayload = {
+      storeName: storeName.trim(),
+      email: cleanEmail,
+      passwordHash,
+      name: storeName.trim(),
+      refCode: refCode ? String(refCode).trim().toUpperCase() : null,
+    };
 
     await prisma.pendingAuthSession.upsert({
       where: { phoneNumber: cleanPhone },
@@ -99,23 +105,13 @@ export async function POST(req: NextRequest) {
         phoneNumber: cleanPhone,
         phoneCodeHash,
         sessionString,
-        dataJson: JSON.stringify({
-          storeName: storeName.trim(),
-          email: cleanEmail,
-          passwordHash,
-          name: storeName.trim(),
-        }),
+        dataJson: JSON.stringify(pendingPayload),
         expiresAt,
       },
       update: {
         phoneCodeHash,
         sessionString,
-        dataJson: JSON.stringify({
-          storeName: storeName.trim(),
-          email: cleanEmail,
-          passwordHash,
-          name: storeName.trim(),
-        }),
+        dataJson: JSON.stringify(pendingPayload),
         expiresAt,
       },
     });

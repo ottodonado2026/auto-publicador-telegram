@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdminPaymentReceived } from "@/lib/adminNotifier";
 
 export const dynamic = "force-dynamic";
 
@@ -322,8 +323,40 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        if (user.referredById) {
+          const bonusGen = Number((amountNum * 0.10).toFixed(2));
+          if (bonusGen > 0) {
+            await tx.referralBonus.create({
+              data: {
+                referrerId: user.referredById,
+                referredUserId: user.id,
+                amountUSD: bonusGen,
+                sourceTxAmount: amountNum,
+                status: "PENDING",
+                releaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              },
+            });
+            await tx.user.update({
+              where: { id: user.referredById },
+              data: { pendingBonusBalance: { increment: bonusGen } },
+            });
+          }
+        }
+
         return sub;
       });
+
+      // Disparar alerta en tiempo real a tu Telegram personal
+      notifyAdminPaymentReceived({
+        amount: amountNum,
+        currency,
+        orderId: officialOrderId,
+        userIdentifier: user.storeName || user.name || user.email || user.phoneNumber || "Cliente",
+        botCode: user.botCode,
+        mode: "PLAN",
+        planName: plan.name,
+        bonusGenerated: user.referredById ? Number((amountNum * 0.10).toFixed(2)) : undefined,
+      }).catch(() => {});
 
       const excessNote =
         walletExcess > 0
@@ -404,7 +437,38 @@ export async function POST(req: NextRequest) {
           },
         },
       });
+
+      if (user.referredById) {
+        const bonusGen = Number((amountNum * 0.10).toFixed(2));
+        if (bonusGen > 0) {
+          await tx.referralBonus.create({
+            data: {
+              referrerId: user.referredById,
+              referredUserId: user.id,
+              amountUSD: bonusGen,
+              sourceTxAmount: amountNum,
+              status: "PENDING",
+              releaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+          });
+          await tx.user.update({
+            where: { id: user.referredById },
+            data: { pendingBonusBalance: { increment: bonusGen } },
+          });
+        }
+      }
     });
+
+    // Disparar alerta en tiempo real a tu Telegram personal
+    notifyAdminPaymentReceived({
+      amount: amountNum,
+      currency,
+      orderId: officialOrderId,
+      userIdentifier: user.storeName || user.name || user.email || user.phoneNumber || "Cliente",
+      botCode: user.botCode,
+      mode: "WALLET",
+      bonusGenerated: user.referredById ? Number((amountNum * 0.10).toFixed(2)) : undefined,
+    }).catch(() => {});
 
     const updatedBalance = Number((Number(user.walletBalance || 0) + amountNum).toFixed(2));
 

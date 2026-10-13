@@ -26,9 +26,19 @@ export default function ClientLoginPage() {
   const [animPhase, setAnimPhase] = useState<AuthAnimationPhase>("IDLE");
   const [animProgress, setAnimProgress] = useState(0);
 
+  const [refCode, setRefCode] = useState("");
+
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("mode=register")) {
-      setIsRegister(true);
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("mode") === "register") {
+        setIsRegister(true);
+      }
+      const ref = urlParams.get("ref");
+      if (ref) {
+        setRefCode(ref.toUpperCase());
+        setIsRegister(true);
+      }
     }
   }, []);
 
@@ -144,6 +154,7 @@ export default function ClientLoginPage() {
             phoneNumber,
             email: email.trim().toLowerCase(),
             password,
+            refCode: refCode ? refCode.trim().toUpperCase() : undefined,
           }),
         });
 
@@ -535,6 +546,37 @@ export default function ClientLoginPage() {
                             } ${
                               isDark
                                 ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
+                                : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Código de Invitación / Referido (Opcional) */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1 pl-0.5">
+                          <label className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                            isDark ? "text-neutral-400" : "text-neutral-600"
+                          }`}>
+                            Código de Invitación / Referido (Opcional)
+                          </label>
+                          {refCode && (
+                            <span className="text-[10px] font-bold text-[#229ED9] flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              <span>Invitación aplicada</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <Sparkles className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Ej: BOT-I129849"
+                            value={refCode}
+                            onChange={(e) => setRefCode(e.target.value.toUpperCase())}
+                            className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-mono font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
+                              isDark
+                                ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-600"
                                 : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
                             }`}
                           />

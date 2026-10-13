@@ -65,6 +65,14 @@ model User {
   auditLogs          AuditLog[]
   walletTransactions WalletTransaction[]
 
+  // Sistema de Referidos & Bonos
+  referredById        String?
+  referredBy          User?           @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals           User[]          @relation("UserReferrals")
+  referralBonuses     ReferralBonus[] @relation("ReferrerBonuses")
+  receivedBonuses     ReferralBonus[] @relation("ReferredBonuses")
+  pendingBonusBalance Decimal         @default(0.00) @db.Decimal(10, 2)
+
   @@map("users")
 }
 
@@ -228,4 +236,21 @@ model LandingVisit {
 
   @@map("landing_visits")
 }
+
+model ReferralBonus {
+  id              String    @id @default(uuid())
+  referrerId      String
+  referrer        User      @relation("ReferrerBonuses", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId  String
+  referredUser    User      @relation("ReferredBonuses", fields: [referredUserId], references: [id], onDelete: Cascade)
+  amountUSD       Decimal   @db.Decimal(10, 2)
+  sourceTxAmount  Decimal   @db.Decimal(10, 2)
+  status          String    @default("PENDING") // "PENDING" (en espera del ciclo semanal) | "RELEASED" (liberado a Wallet)
+  releaseDate     DateTime  // Fecha exacta de liberación (7 días tras la recarga)
+  releasedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@map("referral_bonuses")
+}
+
 

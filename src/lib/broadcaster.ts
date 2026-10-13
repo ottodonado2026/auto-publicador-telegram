@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { createTelegramClient } from "@/lib/telegram";
 import { validateUserSubscription } from "@/lib/membership";
+import { parseSpintax } from "@/lib/spintax";
+import { notifyClientGroupProtection } from "@/lib/adminNotifier";
 
 export interface BroadcastResult {
   target: string;
@@ -238,6 +240,9 @@ export async function runCampaignBroadcast(
           );
         } catch {}
 
+        // Procesar Spintax para que cada mensaje a cada grupo sea único y variado (Anti-Baneo)
+        const customizedMessage = parseSpintax(campaign.messageContent);
+
         if (campaign.mediaUrl && campaign.mediaUrl.startsWith("data:image/")) {
           const base64Data = campaign.mediaUrl.split(",")[1];
           const buffer = Buffer.from(base64Data, "base64");
@@ -246,12 +251,12 @@ export async function runCampaignBroadcast(
 
           await client.sendFile(entity, {
             file: toUpload,
-            caption: campaign.messageContent,
+            caption: customizedMessage,
             parseMode: "md",
           });
         } else {
           await client.sendMessage(entity, {
-            message: campaign.messageContent,
+            message: customizedMessage,
             parseMode: "md",
           });
         }
@@ -284,6 +289,24 @@ export async function runCampaignBroadcast(
         console.error(`Error al enviar a ${rawTarget} con ${account.phoneNumber}:`, sendError);
         const errMsg = sendError.message || "Error al publicar";
 
+        // Detectar si el grupo requiere unirse manualmente o resolver captcha / botón de bot
+        const isCaptchaOrProtection =
+          errMsg.includes("CHAT_WRITE_FORBIDDEN") ||
+          errMsg.includes("USER_BANNED_IN_CHANNEL") ||
+          errMsg.includes("SLOWMODE") ||
+          errMsg.includes("CHANNEL_PRIVATE") ||
+          errMsg.includes("You can't write") ||
+          errMsg.includes("need to join");
+
+        if (isCaptchaOrProtection && account?.phoneNumber) {
+          notifyClientGroupProtection({
+            clientPhone: account.phoneNumber,
+            groupName: cleanTarget,
+            reason:
+              "El grupo exige resolver verificación 'No soy un bot' o unirte manualmente desde tu aplicación móvil.",
+          }).catch(() => {});
+        }
+
         await prisma.messageLog.create({
           data: {
             campaignId: campaign.id,
@@ -291,7 +314,9 @@ export async function runCampaignBroadcast(
             targetGroupId: rawTarget,
             targetGroupName: cleanTarget,
             status: "FAILED",
-            errorMessage: errMsg,
+            errorMessage: isCaptchaOrProtection
+              ? `Protección/Captcha detectado: ${errMsg}. Revisa tu celular.`
+              : errMsg,
           },
         });
 

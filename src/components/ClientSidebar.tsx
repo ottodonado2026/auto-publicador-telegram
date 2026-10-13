@@ -7,7 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import {
   LayoutDashboard, PlusCircle,
   CreditCard, LogOut, Sun, Moon, BookOpen, Wallet,
-  ChevronLeft, ChevronRight, Menu, X, UserCheck, Store
+  ChevronLeft, ChevronRight, Menu, X, UserCheck, Store, Users
 } from "lucide-react";
 
 interface ClientSidebarProps {
@@ -48,6 +48,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
     { name: "Crear Nuevo Copy", href: "/dashboard/campaigns", icon: PlusCircle },
     { name: "Recargar Membresía", href: "/dashboard/plans", icon: CreditCard },
     { name: "Mi Perfil & Telegram", href: "/dashboard/telegram", icon: UserCheck },
+    { name: "Programa de Referidos", href: "/dashboard/referrals", icon: Users },
     { name: "Instrucciones de Uso", href: "/dashboard/guide", icon: BookOpen },
   ];
 
