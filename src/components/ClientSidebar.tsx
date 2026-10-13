@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
-  LayoutDashboard, Send, PlusCircle, MessageSquare, 
+  LayoutDashboard, Send, PlusCircle, 
   CreditCard, LogOut, Clock, Sun, Moon
 } from "lucide-react";
 
@@ -27,7 +27,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
   const navItems = [
     { name: "Mis Campañas & Envíos", href: "/dashboard", icon: LayoutDashboard },
     { name: "Crear Nuevo Copy", href: "/dashboard/campaigns", icon: PlusCircle },
-    { name: "Vincular mi Telegram", href: "/admin/telegram", icon: Send },
+    { name: "Vincular mi Telegram", href: "/dashboard/telegram", icon: Send },
     { name: "Recargar Membresía", href: "/admin/plans", icon: CreditCard },
   ];
 
@@ -53,7 +53,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
           </div>
         </div>
 
-        {/* Links de Navegación */}
+        {/* Links de Navegación del Cliente */}
         <nav className="p-4 space-y-1.5">
           <div className="px-3 py-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
             Gestión de Publicaciones
@@ -79,7 +79,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
         </nav>
       </div>
 
-      {/* Info Membresía, Switcher de Tema y Usuario */}
+      {/* Info Membresía, Switcher de Tema y Usuario Dinámico */}
       <div className="p-4 border-t border-[#2B303C] space-y-2.5">
         {/* Toggle Tema Claro / Oscuro para el Cliente */}
         <button
@@ -97,17 +97,22 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
 
         <div className="bg-[#171A20] rounded-2xl p-3.5 border border-[#2B303C]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-neutral-400 uppercase">Estado Membresía</span>
+            <span className="text-[10px] font-bold text-neutral-400 uppercase">Membresía</span>
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
               hasAccess ? "bg-emerald-900/60 text-emerald-300" : "bg-red-900/60 text-red-300"
             }`}>
-              {hasAccess ? "Activo" : "Expirado"}
+              {hasAccess ? "24h Activo" : "Expirado"}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-bold text-white">
+          <div className="flex items-center gap-2 text-xs font-bold text-white mb-2">
             <Clock className="w-3.5 h-3.5 text-[#229ED9]" />
-            <span>{membership?.daysRemaining ?? 0} días restantes</span>
+            <span>{membership?.daysRemaining ?? 1} día(s) restante(s)</span>
+          </div>
+
+          {/* Correo dinámico del usuario autenticado */}
+          <div className="pt-2 border-t border-[#2B303C]/70 text-[11px] text-neutral-400 truncate font-mono">
+            {user?.email || "Cargando usuario..."}
           </div>
         </div>
 

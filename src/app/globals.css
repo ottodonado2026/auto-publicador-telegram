@@ -2,25 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #F8F9FA;
-  --foreground: #1E1E24;
+/* Estilos de Tema Oscuro y Claro pulidos con alto contraste */
+html.dark {
+  --bg-app: #12151B;
+  --bg-surface: #1E2229;
+  --bg-inner: #171A20;
+  --border-color: #2D3340;
+  --text-main: #FFFFFF;
+  --text-muted: #94A3B8;
+  --text-heading: #F8FAFC;
+}
+
+html:not(.dark) {
+  --bg-app: #E9ECF0;
+  --bg-surface: #FFFFFF;
+  --bg-inner: #F8FAFC;
+  --border-color: #CBD5E1;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-heading: #0F172A;
 }
 
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg-app);
+  color: var(--text-main);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Animación de levitación suave para el logo de Telegram */
+/* Animación de levitación suave para logos y elementos flotantes */
 @keyframes float {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-8px) rotate(-3deg);
+    transform: translateY(-6px) rotate(-2deg);
   }
 }
 
