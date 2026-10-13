@@ -6,19 +6,20 @@ import Link from "next/link";
 import ClientSidebar from "@/components/ClientSidebar";
 import { useTheme } from "@/context/ThemeContext";
 import { 
-  Send, Plus, Play, Pause, AlertCircle, Clock, 
-  CheckCircle2, Layers, MessageSquare, Activity, 
-  RefreshCw, Rocket, XCircle, ShieldCheck, Users, Edit3, Timer, BookmarkCheck
+  Plus, Pause, AlertCircle, Clock, 
+  CheckCircle2, MessageSquare, Activity, 
+  RefreshCw, Rocket, XCircle, Users, Edit3, Timer, BookmarkCheck,
+  ChevronLeft, ChevronRight, Moon, Zap
 } from "lucide-react";
 
-function formatCountdown(nextRunAt: string | null, intervalMinutes: number, nowMs: number) {
+function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, nowMs: number) {
   if (!nextRunAt) {
     return `${intervalMinutes}m 00s`;
   }
   const targetMs = new Date(nextRunAt).getTime();
   const diffSec = Math.max(0, Math.floor((targetMs - nowMs) / 1000));
   if (diffSec === 0) {
-    return "Emitiendo ronda...";
+    return "Iniciando ronda...";
   }
   const hrs = Math.floor(diffSec / 3600);
   const mins = Math.floor((diffSec % 3600) / 60);
@@ -38,14 +39,19 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [broadcastingId, setBroadcastingId] = useState<string | null>(null);
+  const [broadcastStartMs, setBroadcastStartMs] = useState<Record<string, number>>({});
   const [broadcastFeedback, setBroadcastFeedback] = useState<{ id: string; message: string; isError?: boolean } | null>(null);
   const [campaignPage, setCampaignPage] = useState(1);
+  // Paginación independiente cada 5 grupos para "Últimos Grupos donde se Publicó" en cada campaña
+  const [logPageByCampaign, setLogPageByCampaign] = useState<Record<string, number>>({});
   const [nowMs, setNowMs] = useState<number>(Date.now());
+
   const campaignsPerPage = 12;
+  const logsPerPage = 5;
 
   const fetchDashboard = async () => {
     try {
-      const res = await fetch("/api/campaigns");
+      const res = await fetch("/api/campaigns", { cache: "no-store" });
       if (res.status === 401) {
         router.push("/login");
         return;
@@ -61,9 +67,9 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchDashboard();
-    // Actualizar datos del servidor cada 25 segundos
-    const pollInterval = setInterval(fetchDashboard, 25000);
-    // Reloj en vivo segundo a segundo para el conteo regresivo
+    // Sincronización silenciosa en vivo cada 8 segundos para reflejar cada grupo publicado sin recargar la página
+    const pollInterval = setInterval(fetchDashboard, 8000);
+    // Reloj en tiempo real (1 segundo) para la barra de conteo regresivo (59s, 58s, 57s... y descanso)
     const clockInterval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => {
       clearInterval(pollInterval);
@@ -98,15 +104,16 @@ export default function ClientDashboard() {
     }
   };
 
-  const handleTriggerBroadcast = async (campaignId: string) => {
+  const handleTriggerBroadcast = async (campaignId: string, isPaidExtraRound = false) => {
     try {
       setBroadcastingId(campaignId);
+      setBroadcastStartMs((prev) => ({ ...prev, [campaignId]: Date.now() }));
       setBroadcastFeedback(null);
 
       const res = await fetch("/api/campaigns/broadcast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId }),
+        body: JSON.stringify({ campaignId, isPaidExtraRound }),
       });
 
       const result = await res.json();
@@ -117,7 +124,7 @@ export default function ClientDashboard() {
 
       setBroadcastFeedback({
         id: campaignId,
-        message: "¡Ronda de difusión completada exitosamente en Telegram!",
+        message: result.message || "¡Ronda de difusión completada exitosamente en Telegram!",
       });
 
       await fetchDashboard();
@@ -139,6 +146,9 @@ export default function ClientDashboard() {
   const sessionUser = data?.user;
   const isExpired = !membership?.hasAccess;
   const maxAllowedActive = sessionUser?.subscription?.maxCampaigns || 2;
+  const todaySentCount = data?.todaySentCount || 0;
+  const maxDailyPosts = data?.maxDailyPosts || 100;
+  const dailyLimitReached = todaySentCount >= maxDailyPosts;
 
   // Métricas agregadas
   const totalGroups = activeCampaigns.reduce(
@@ -153,7 +163,7 @@ export default function ClientDashboard() {
     }`}>
       <ClientSidebar user={sessionUser} membership={membership} />
 
-      <main className="flex-1 ml-64 p-8 max-w-6xl w-full mx-auto">
+      <main className="flex-1 ml-64 p-4 sm:p-8 max-w-6xl w-full mx-auto">
         {loading && !data ? (
           <div className="space-y-6">
             <div className="h-16 rounded-3xl bg-neutral-700/20 animate-pulse" />
@@ -190,7 +200,7 @@ export default function ClientDashboard() {
                 isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
               }`}>
                 <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold flex-shrink-0">
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
@@ -199,13 +209,13 @@ export default function ClientDashboard() {
                     }`}>
                       Suscripción en Piloto Automático 24/7
                     </span>
-                    <span className="text-base font-black">
+                    <span className="text-sm sm:text-base font-black">
                       {membership?.daysRemaining} día(s) restantes • Cupo: {activeCampaigns.length} de {maxAllowedActive} campañas activas
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {pausedCampaigns.length > 0 && (
                     <Link
                       href="/dashboard/campaigns?tab=LIBRARY"
@@ -235,7 +245,7 @@ export default function ClientDashboard() {
                 </div>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-black">{activeCampaigns.length}</span>
-                  <span className="text-xs text-neutral-400 font-bold">/ {maxAllowedActive} máx.</span>
+                  <span className="text-xs text-neutral-400 font-bold">/ {maxAllowedActive} permitidas</span>
                 </div>
               </div>
 
@@ -243,7 +253,7 @@ export default function ClientDashboard() {
                 isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
               }`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Grupos en Rotación</span>
+                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Grupos Asignados Hoy</span>
                   <Users className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-2xl font-black mt-1">
@@ -255,11 +265,17 @@ export default function ClientDashboard() {
                 isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
               }`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Envíos Totales Exitosos</span>
+                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Publicaciones Hoy / Plan</span>
                   <Rocket className="w-4 h-4 text-purple-400" />
                 </div>
-                <div className="text-2xl font-black mt-1">
-                  {totalSent}
+                <div className="flex items-baseline justify-between mt-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black">{todaySentCount}</span>
+                    <span className="text-xs text-emerald-400 font-bold">/ {maxDailyPosts} hoy</span>
+                  </div>
+                  <span className="text-[11px] text-neutral-400 font-semibold">
+                    Total: {totalSent}
+                  </span>
                 </div>
               </div>
             </div>
@@ -271,7 +287,7 @@ export default function ClientDashboard() {
                   Mis Campañas Activas & Envíos en Vivo
                 </h1>
                 <p className={`text-xs font-semibold mt-1 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                  Aquí se muestran únicamente las campañas que están corriendo hoy. Si deseas cambiar una por otro copy guardado, páusala aquí y activa otra en tu Biblioteca.
+                  El conteo regresivo y las últimas publicaciones se actualizan automáticamente en vivo sin necesidad de recargar la página.
                 </p>
               </div>
 
@@ -283,10 +299,10 @@ export default function ClientDashboard() {
                       ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:text-white" 
                       : "bg-white border-neutral-300 text-neutral-700 hover:text-black"
                   }`}
-                  title="Refrescar datos"
+                  title="Sincronizar ahora"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-[#229ED9]" />
-                  <span className="hidden sm:inline">Refrescar</span>
+                  <span className="hidden sm:inline">Sincronizar</span>
                 </button>
 
                 <Link
@@ -336,91 +352,167 @@ export default function ClientDashboard() {
                 {activeCampaigns
                   .slice((campaignPage - 1) * campaignsPerPage, campaignPage * campaignsPerPage)
                   .map((c: any) => {
-                    const targetCount = Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 1;
+                    const uniqueTargets = Array.isArray(c.targetGroupIds)
+                      ? Array.from(new Set(c.targetGroupIds))
+                      : [];
+                    const targetCount = Math.max(1, uniqueTargets.length);
                     const sentCount = c._count?.logs || 0;
-                    const progressPercent = Math.min(100, Math.round((sentCount / Math.max(1, targetCount * 3)) * 100));
-                    const isBroadcasting = broadcastingId === c.id;
-                    const logs = c.logs || [];
-                    const countdownText = formatCountdown(c.nextRunAt, c.intervalMinutes || 60, nowMs);
+                    const logs: any[] = c.logs || [];
+
+                    // Determinar si la campaña está EMITIENDO EN VIVO (intervalo 60s -> 0s) o EN DESCANSO (60m / 120m -> 00m 00s)
+                    const latestLogMs = logs[0]?.createdAt ? new Date(logs[0].createdAt).getTime() : 0;
+                    const secSinceLatestLog = latestLogMs > 0 ? Math.floor((nowMs - latestLogMs) / 1000) : 999999;
+
+                    // Contar cuántos logs pertenecen a la ronda actual (últimos targetCount minutos)
+                    const currentRoundWindowMs = targetCount * 65 * 1000;
+                    const logsInCurrentRound = logs.filter(
+                      (l: any) => nowMs - new Date(l.createdAt).getTime() <= currentRoundWindowMs
+                    ).length;
+
+                    const isManualBroadcasting = broadcastingId === c.id;
+                    const isAutoSendingRound =
+                      isManualBroadcasting ||
+                      (secSinceLatestLog >= 0 && secSinceLatestLog < 65 && logsInCurrentRound < targetCount);
+
+                    // Cálculo del conteo regresivo de 60s -> 0s entre grupo y grupo cuando está emitiendo
+                    const manualElapsedSec = broadcastStartMs[c.id]
+                      ? Math.floor((nowMs - broadcastStartMs[c.id]) / 1000)
+                      : 0;
+                    const activeCycleSecUsed =
+                      secSinceLatestLog < 65 ? secSinceLatestLog : manualElapsedSec % 60;
+                    const groupSecondsLeft = Math.max(1, 60 - (activeCycleSecUsed % 60));
+
+                    // Cálculo del descanso entre rondas (60 min / 120 min -> 00m 00s)
+                    const totalRestSec = (c.intervalMinutes || 60) * 60;
+                    const nextRunTargetMs = c.nextRunAt ? new Date(c.nextRunAt).getTime() : nowMs + totalRestSec * 1000;
+                    const restSecondsLeft = Math.max(0, Math.floor((nextRunTargetMs - nowMs) / 1000));
+                    const restCountdownText = formatRestCountdown(c.nextRunAt, c.intervalMinutes || 60, nowMs);
+
+                    // Porcentaje de la barra regresiva (De 100% hacia 0% de adelante hacia atrás)
+                    const reverseBarPercent = isAutoSendingRound
+                      ? Math.max(4, Math.round((groupSecondsLeft / 60) * 100))
+                      : Math.min(100, Math.max(4, Math.round((restSecondsLeft / totalRestSec) * 100)));
+
+                    // Paginación de "Últimos Grupos donde se Publicó" (5 grupos por página)
+                    const currentLogPage = logPageByCampaign[c.id] || 1;
+                    const totalLogPages = Math.max(1, Math.ceil(logs.length / logsPerPage));
+                    const safeLogPage = Math.min(currentLogPage, totalLogPages);
+                    const paginatedLogs = logs.slice(
+                      (safeLogPage - 1) * logsPerPage,
+                      safeLogPage * logsPerPage
+                    );
 
                     return (
                       <div
                         key={c.id}
-                        className={`rounded-3xl p-6 border shadow-xl transition-all ${
+                        className={`rounded-3xl p-5 sm:p-6 border shadow-xl transition-all ${
                           isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
                         }`}
                       >
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
-                          <div>
+                        {/* Cabecera de la Campaña con todos los botones alineados en una sola fila */}
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2.5">
-                              <h2 className="text-base sm:text-lg font-black tracking-tight">{c.name}</h2>
-                              <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                En Piloto Automático 24/7
-                              </span>
+                              <h2 className="text-base sm:text-lg font-black tracking-tight truncate">
+                                {c.name}
+                              </h2>
+                              {isAutoSendingRound ? (
+                                <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                  Publicando en Vivo ({Math.min(logsInCurrentRound + 1, targetCount)}/{targetCount} grupos)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                  <Moon className="w-3 h-3 text-amber-400" />
+                                  En Descanso ({c.intervalMinutes} min)
+                                </span>
+                              )}
                             </div>
-                            <p className={`text-xs mt-1 ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
-                              Grupos asignados: <strong>{targetCount}</strong> ({Array.isArray(c.targetGroupIds) ? c.targetGroupIds.slice(0, 3).join(", ") : ""}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
+                            <p className={`text-xs mt-1 truncate ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
+                              Grupos seleccionados: <strong>{targetCount}</strong> ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
                             </p>
                           </div>
 
-                          {/* Reloj de Conteo Regresivo + Controles */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            {/* Contador Regresivo en Tiempo Real */}
-                            <div className={`px-3.5 py-2 rounded-xl border flex items-center gap-2 text-xs font-mono font-black ${
-                              isDark ? "bg-[#15181E] border-emerald-500/30 text-emerald-400" : "bg-emerald-50 border-emerald-300 text-emerald-700"
+                          {/* Fila Única Alineada: Reloj + Editar + Adelantar Ronda + Pausar */}
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-shrink-0">
+                            {/* Reloj Regresivo Compacto */}
+                            <div className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-mono font-black whitespace-nowrap ${
+                              isAutoSendingRound
+                                ? isDark
+                                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400"
+                                  : "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                : isDark
+                                ? "bg-[#15181E] border-amber-500/30 text-amber-400"
+                                : "bg-amber-50 border-amber-300 text-amber-700"
                             }`}>
-                              <Timer className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: "8s" }} />
+                              <Timer className="w-3.5 h-3.5 flex-shrink-0 animate-spin" style={{ animationDuration: "8s" }} />
                               <div>
                                 <span className="text-[9px] uppercase block font-sans font-bold text-neutral-400 leading-none">
-                                  Próxima Ronda en:
+                                  {isAutoSendingRound ? "Siguiente grupo:" : "En Descanso:"}
                                 </span>
-                                <span>{countdownText}</span>
+                                <span>{isAutoSendingRound ? `${groupSecondsLeft}s` : restCountdownText}</span>
                               </div>
                             </div>
 
+                            {/* Botón Editar */}
                             <Link
                               href={`/dashboard/campaigns?edit=${c.id}`}
-                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all ${
+                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all whitespace-nowrap ${
                                 isDark
                                   ? "bg-[#171A20] hover:bg-[#252A34] text-[#229ED9] border-[#2D3340]"
                                   : "bg-neutral-50 hover:bg-neutral-100 text-[#229ED9] border-neutral-300"
                               }`}
-                              title="Editar copy, foto o grupos de esta campaña"
+                              title="Editar copy, foto o seleccionar grupos"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                               <span>Editar</span>
                             </Link>
 
+                            {/* Botón Adelantar Ronda (o Ronda Extra +$1 USD si agotó límite diario) */}
+                            {dailyLimitReached ? (
+                              <button
+                                type="button"
+                                disabled={isManualBroadcasting}
+                                onClick={() => handleTriggerBroadcast(c.id, true)}
+                                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-md transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                title="Lanzar una ronda extra hoy por $1.00 USD desde tu Wallet"
+                              >
+                                <Zap className="w-3.5 h-3.5 text-white" />
+                                <span>+1 Ronda Extra ($1)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isManualBroadcasting}
+                                onClick={() => handleTriggerBroadcast(c.id, false)}
+                                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                title="Emitir ronda ahora mismo"
+                              >
+                                {isManualBroadcasting ? (
+                                  <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Emitiendo ({groupSecondsLeft}s)...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Rocket className="w-3.5 h-3.5 text-white" />
+                                    <span>Adelantar Ronda</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            {/* Botón Pausar (Alineado en la misma fila horizontal) */}
                             <button
                               type="button"
-                              disabled={isBroadcasting}
-                              onClick={() => handleTriggerBroadcast(c.id)}
-                              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
-                              title="Adelantar una ronda ahora mismo"
-                            >
-                              {isBroadcasting ? (
-                                <>
-                                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                  <span>Publicando en Grupos...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Rocket className="w-3.5 h-3.5 text-white" />
-                                  <span>Adelantar Ronda</span>
-                                </>
-                              )}
-                            </button>
-
-                            <button
                               disabled={actionLoading === c.id}
                               onClick={() => toggleCampaign(c.id, c.status)}
-                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
                                 isDark
                                   ? "bg-[#171A20] hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30 text-neutral-300 border-[#2D3340]"
                                   : "bg-neutral-100 hover:bg-red-50 hover:text-red-600 text-neutral-700 border-neutral-300"
                               }`}
-                              title="Pausar esta campaña para liberar cupo y activar otro copy"
+                              title="Pausar esta campaña"
                             >
                               <Pause className="w-3.5 h-3.5" />
                               <span>Pausar</span>
@@ -430,40 +522,68 @@ export default function ClientDashboard() {
 
                         {/* Feedback de Difusión */}
                         {broadcastFeedback && broadcastFeedback.id === c.id && (
-                          <div className={`mb-4 p-3 rounded-2xl text-xs font-bold flex items-center gap-2 border ${
+                          <div className={`mb-4 p-3 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 border ${
                             broadcastFeedback.isError
                               ? "bg-red-500/10 border-red-500/30 text-red-400"
                               : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
                           }`}>
-                            {broadcastFeedback.isError ? (
-                              <XCircle className="w-4 h-4 flex-shrink-0" />
-                            ) : (
-                              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                            <div className="flex items-center gap-2">
+                              {broadcastFeedback.isError ? (
+                                <XCircle className="w-4 h-4 flex-shrink-0" />
+                              ) : (
+                                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                              )}
+                              <span>{broadcastFeedback.message}</span>
+                            </div>
+
+                            {broadcastFeedback.isError && broadcastFeedback.message.includes("Ronda Extra") && (
+                              <button
+                                type="button"
+                                onClick={() => handleTriggerBroadcast(c.id, true)}
+                                className="px-3 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-black hover:bg-amber-400 whitespace-nowrap cursor-pointer"
+                              >
+                                Comprar +1 Ronda ($1.00 USD)
+                              </button>
                             )}
-                            <span>{broadcastFeedback.message}</span>
                           </div>
                         )}
 
-                        {/* Barra de Progreso y Tiempos de Secuencia / Descanso */}
+                        {/* Barra de Progreso en Conteo Regresivo (De Adelante hacia Atrás: 100% -> 0%) */}
                         <div className={`rounded-2xl p-4 border mb-3 ${
                           isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-[#F8FAFC] border-neutral-200"
                         }`}>
-                          <div className="flex items-center justify-between text-xs mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs mb-2">
                             <span className="font-bold flex items-center gap-1.5 text-[#229ED9]">
                               <Activity className="w-4 h-4 animate-pulse" />
-                              Secuencia Automática de Envíos en Vivo
+                              {isAutoSendingRound ? (
+                                <span>
+                                  Publicando en grupos — Próximo grupo en:{" "}
+                                  <strong className="text-emerald-400 font-mono text-sm">{groupSecondsLeft}s</strong> (60s → 0s)
+                                </span>
+                              ) : (
+                                <span>
+                                  Campaña en Descanso ({c.intervalMinutes} min) — Próxima ronda en:{" "}
+                                  <strong className="text-amber-400 font-mono text-sm">{restCountdownText}</strong>
+                                </span>
+                              )}
                             </span>
-                            <span className="font-extrabold text-emerald-400">
-                              {sentCount} publicaciones realizadas
+
+                            <span className="font-extrabold text-emerald-400 font-mono text-xs">
+                              {sentCount} envíos ({reverseBarPercent}% restante del ciclo)
                             </span>
                           </div>
 
-                          <div className={`w-full h-2.5 rounded-full overflow-hidden ${
+                          {/* Barra que disminuye en vivo de 100% a 0% */}
+                          <div className={`w-full h-3 rounded-full overflow-hidden p-0.5 ${
                             isDark ? "bg-[#252A34]" : "bg-neutral-200"
                           }`}>
                             <div 
-                              className="h-full bg-gradient-to-r from-[#229ED9] to-emerald-500 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.max(sentCount > 0 ? 25 : 8, progressPercent)}%` }}
+                              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                                isAutoSendingRound
+                                  ? "bg-gradient-to-r from-emerald-500 via-[#229ED9] to-sky-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                                  : "bg-gradient-to-r from-[#229ED9] to-amber-500"
+                              }`}
+                              style={{ width: `${reverseBarPercent}%` }}
                             />
                           </div>
 
@@ -471,52 +591,114 @@ export default function ClientDashboard() {
                             isDark ? "border-[#2D3340] text-neutral-400" : "border-neutral-200 text-neutral-600"
                           }`}>
                             <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#229ED9]" />
-                              <span>Intervalo entre grupos: <strong>60 seg (Antibaneo)</strong></span>
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                              <span>
+                                Intervalo entre grupos:{" "}
+                                <strong className="text-emerald-400 font-mono">
+                                  {isAutoSendingRound ? `${groupSecondsLeft}s / 60s` : "60s → 0s (Antibaneo)"}
+                                </strong>
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-amber-400" />
-                              <span>Descanso entre rondas: <strong>Cada {c.intervalMinutes} min</strong></span>
+                              <span>
+                                Ciclo de descanso: <strong>Cada {c.intervalMinutes} min</strong>
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5 sm:justify-end">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                              <span>Siguiente ciclo en: <strong className="text-emerald-400 font-mono">{countdownText}</strong></span>
+                              <span className="w-2 h-2 rounded-full bg-[#229ED9]" />
+                              <span>
+                                Estado:{" "}
+                                <strong className={isAutoSendingRound ? "text-emerald-400" : "text-amber-400"}>
+                                  {isAutoSendingRound ? "Emitiendo ronda..." : `Descansando (${restCountdownText})`}
+                                </strong>
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Historial de Envíos en Vivo (Últimos Grupos donde se publicó) */}
+                        {/* Últimos Grupos donde se Publicó — Paginado cada 5 grupos */}
                         {logs.length > 0 && (
                           <div className={`p-3.5 rounded-2xl border ${
                             isDark ? "bg-[#15181E] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
                           }`}>
-                            <span className={`text-[10px] font-extrabold uppercase tracking-wider block mb-2 ${
-                              isDark ? "text-neutral-400" : "text-neutral-500"
-                            }`}>
-                              Últimos Grupos donde se Publicó ({logs.length} recientes)
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              {logs.slice(0, 6).map((log: any) => (
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                              <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                                isDark ? "text-neutral-400" : "text-neutral-500"
+                              }`}>
+                                Últimos Grupos donde se Publicó (Mostrando {(safeLogPage - 1) * logsPerPage + 1}-{Math.min(safeLogPage * logsPerPage, logs.length)} de {logs.length})
+                              </span>
+
+                              {/* Paginación de 5 en 5 grupos */}
+                              {totalLogPages > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={safeLogPage <= 1}
+                                    onClick={() =>
+                                      setLogPageByCampaign((prev) => ({
+                                        ...prev,
+                                        [c.id]: Math.max(1, safeLogPage - 1),
+                                      }))
+                                    }
+                                    className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer ${
+                                      isDark
+                                        ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:border-[#229ED9]"
+                                        : "bg-white border-neutral-300 text-neutral-700"
+                                    }`}
+                                  >
+                                    <ChevronLeft className="w-3 h-3" />
+                                    <span>Anterior</span>
+                                  </button>
+
+                                  <span className="text-[10px] font-black px-1.5 text-[#229ED9]">
+                                    Pág. {safeLogPage}/{totalLogPages}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    disabled={safeLogPage >= totalLogPages}
+                                    onClick={() =>
+                                      setLogPageByCampaign((prev) => ({
+                                        ...prev,
+                                        [c.id]: Math.min(totalLogPages, safeLogPage + 1),
+                                      }))
+                                    }
+                                    className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer ${
+                                      isDark
+                                        ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:border-[#229ED9]"
+                                        : "bg-white border-neutral-300 text-neutral-700"
+                                    }`}
+                                  >
+                                    <span>Siguiente</span>
+                                    <ChevronRight className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                              {paginatedLogs.map((log: any) => (
                                 <div 
                                   key={log.id}
                                   className={`flex items-center justify-between text-xs p-2.5 rounded-xl border ${
                                     isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-200"
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2 truncate pr-2">
+                                  <div className="flex items-center gap-1.5 truncate pr-1.5">
                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                       log.status === "SENT" ? "bg-emerald-500" : "bg-red-500"
                                     }`} />
-                                    <span className="font-bold truncate">
+                                    <span className="font-bold truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
                                       {log.targetGroupName || log.targetGroupId}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
                                       ✓
                                     </span>
                                     <span className="text-[10px] text-neutral-500 font-mono">
-                                      {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                   </div>
                                 </div>

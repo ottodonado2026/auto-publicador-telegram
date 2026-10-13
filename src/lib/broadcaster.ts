@@ -11,15 +11,45 @@ export interface BroadcastResult {
   error?: string;
 }
 
+// Candado en memoria para evitar ejecuciones duplicadas en la misma campaña
+const g = globalThis as any;
+if (!g.__activeBroadcastLocks) {
+  g.__activeBroadcastLocks = new Set<string>();
+}
+const activeLocks: Set<string> = g.__activeBroadcastLocks;
+
+/**
+ * Obtiene el límite diario de publicaciones según los días contratados o el plan
+ */
+function getDailyPostLimitByRate(dailyRate: number): number {
+  if (dailyRate <= 0.85) return 500; // Mensual
+  if (dailyRate <= 0.95) return 300; // Quincenal
+  if (dailyRate <= 1.05) return 200; // Semanal
+  return 100; // Pase Express (1 Día)
+}
+
 /**
  * Ejecuta una ronda de difusión para una campaña específica
- * Soportando Balanceo de Carga (Round-Robin) cuando se usa la Flota de Granja OttBot.
+ * Con candado anti-duplicación, límite diario de publicaciones y balanceo Round-Robin.
  */
-export async function runCampaignBroadcast(campaignId: string): Promise<{
+export async function runCampaignBroadcast(
+  campaignId: string,
+  options?: { isPaidExtraRound?: boolean }
+): Promise<{
   success: boolean;
   results: BroadcastResult[];
   error?: string;
 }> {
+  // Evitar que se disparen 2 rondas de la misma campaña al mismo segundo
+  if (activeLocks.has(campaignId)) {
+    return {
+      success: false,
+      results: [],
+      error: "Esta campaña ya está emitiendo una ronda en vivo en este momento.",
+    };
+  }
+
+  activeLocks.add(campaignId);
   const connectedClients: Map<string, { client: any; account: any }> = new Map();
 
   try {
@@ -27,6 +57,11 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       where: { id: campaignId },
       include: {
         telegramAccount: true,
+        user: {
+          include: {
+            subscription: true,
+          },
+        },
       },
     });
 
@@ -44,9 +79,58 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       };
     }
 
-    const targets = Array.isArray(campaign.targetGroupIds)
+    // Mover inmediatamente nextRunAt hacia adelante para que el cron 24/7 no la vuelva a tomar mientras está enviando
+    const intervalMins = campaign.intervalMinutes || 60;
+    const immediateNextRun = new Date(Date.now() + intervalMins * 60 * 1000);
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        lastRunAt: new Date(),
+        nextRunAt: immediateNextRun,
+      },
+    });
+
+    // Verificar cuántas publicaciones lleva hoy este usuario (desde las 00:00 de hoy)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const sentTodayCount = await prisma.messageLog.count({
+      where: {
+        campaign: { userId: campaign.userId },
+        status: "SENT",
+        createdAt: { gte: startOfToday },
+      },
+    });
+
+    const dailyRate = Number(campaign.user?.subscription?.dailyRate || 1.25);
+    const maxDailyLimit = getDailyPostLimitByRate(dailyRate);
+
+    if (!options?.isPaidExtraRound && sentTodayCount >= maxDailyLimit) {
+      return {
+        success: false,
+        results: [],
+        error: `Has alcanzado el límite de ${maxDailyLimit} publicaciones diarias de tu plan hoy. Se reanudará automáticamente mañana o puedes adquirir una Ronda Extra por $1.00 USD.`,
+      };
+    }
+
+    // Deduplicar grupos para nunca enviar 2 veces al mismo grupo en una misma ronda
+    const rawTargets = Array.isArray(campaign.targetGroupIds)
       ? (campaign.targetGroupIds as string[])
       : [];
+
+    const uniqueMap = new Map<string, string>();
+    for (const t of rawTargets) {
+      const cleanKey = t
+        .replace(/https?:\/\/t\.me\//, "")
+        .replace(/^t\.me\//, "")
+        .replace(/^@/, "")
+        .trim()
+        .toLowerCase();
+      if (cleanKey && !uniqueMap.has(cleanKey)) {
+        uniqueMap.set(cleanKey, t);
+      }
+    }
+    const targets = Array.from(uniqueMap.values());
 
     if (targets.length === 0) {
       return {
@@ -57,12 +141,10 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
     }
 
     // Determinar el pool de cuentas de Telegram a usar
-    // Si la campaña apunta a una cuenta de sistema (o la cuenta propia no tiene sesión), cargamos TODAS las cuentas conectadas de la granja
     let accountPool: any[] = [];
     const primaryAcc = campaign.telegramAccount;
 
     if (primaryAcc && !primaryAcc.isSystemAccount && primaryAcc.sessionString && primaryAcc.status === "CONNECTED") {
-      // Usa la cuenta personal del cliente (o todas las cuentas personales conectadas de ese cliente si tiene plan multicuenta)
       const clientAccounts = await prisma.telegramAccount.findMany({
         where: {
           userId: campaign.userId,
@@ -73,7 +155,6 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       });
       accountPool = clientAccounts.length > 0 ? clientAccounts : [primaryAcc];
     } else {
-      // Usa la Flota de Granja del SuperAdmin (Balanceo Round-Robin entre los 5+ bots conectados)
       const farmAccounts = await prisma.telegramAccount.findMany({
         where: {
           isSystemAccount: true,
@@ -92,7 +173,6 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       };
     }
 
-    // Conectar los clientes GramJS del pool
     for (const acc of accountPool) {
       try {
         const sessionString = decrypt(acc.sessionString);
@@ -115,10 +195,14 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
 
     const results: BroadcastResult[] = [];
     const tl = await import("telegram/tl");
+    const remainingQuota = options?.isPaidExtraRound
+      ? targets.length
+      : Math.max(0, maxDailyLimit - sentTodayCount);
 
-    // Recorrer grupos repartiendo la carga en rotación (Round-Robin) entre el pool activo
-    for (let i = 0; i < targets.length; i++) {
-      const rawTarget = targets[i];
+    const targetsToProcess = targets.slice(0, remainingQuota);
+
+    for (let i = 0; i < targetsToProcess.length; i++) {
+      const rawTarget = targetsToProcess[i];
       const cleanTarget = rawTarget
         .replace(/https?:\/\/t\.me\//, "")
         .replace(/^t\.me\//, "")
@@ -127,7 +211,6 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
 
       if (!cleanTarget) continue;
 
-      // Seleccionar bot en rotación: índice i % total_bots
       const worker = activePool[i % activePool.length];
       const { client, account } = worker;
 
@@ -135,13 +218,13 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
         let entity: any = null;
         try {
           entity = await client.getEntity(cleanTarget);
-        } catch (e: any) {
+        } catch {
           try {
             const res = await client.invoke(
               new tl.Api.contacts.ResolveUsername({ username: cleanTarget })
             );
             entity = res.chats?.[0] || res.peer;
-          } catch (innerError) {
+          } catch {
             throw new Error(`No se pudo localizar el grupo @${cleanTarget}`);
           }
         }
@@ -150,18 +233,14 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
           throw new Error(`Grupo o canal no encontrado: ${cleanTarget}`);
         }
 
-        // Si aún no es miembro, intentar unirse
         try {
           await client.invoke(
             new tl.Api.channels.JoinChannel({
               channel: entity,
             })
           );
-        } catch (joinErr: any) {
-          // Ya es miembro o no requiere JoinChannel
-        }
+        } catch {}
 
-        // Enviar mensaje con foto o texto
         if (campaign.mediaUrl && campaign.mediaUrl.startsWith("data:image/")) {
           const base64Data = campaign.mediaUrl.split(",")[1];
           const buffer = Buffer.from(base64Data, "base64");
@@ -200,9 +279,9 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
           status: "SENT",
         });
 
-        // Pausa antibaneo entre envíos
-        if (i < targets.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 3500));
+        // Pausa antibaneo entre grupo y grupo
+        if (i < targetsToProcess.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 4000));
         }
       } catch (sendError: any) {
         console.error(`Error al enviar a ${rawTarget} con ${account.phoneNumber}:`, sendError);
@@ -228,16 +307,16 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       }
     }
 
-    // Actualizar fecha de última y próxima ejecución automática
-    const now = new Date();
-    const nextRun = new Date(now.getTime() + (campaign.intervalMinutes || 60) * 60 * 1000);
+    // Al finalizar la ronda completa, programar el descanso real (60 o 120 min) a partir de este instante
+    const finishedAt = new Date();
+    const finalNextRun = new Date(finishedAt.getTime() + intervalMins * 60 * 1000);
 
     await prisma.campaign.update({
       where: { id: campaign.id },
       data: {
-        lastRunAt: now,
-        nextRunAt: nextRun,
-        updatedAt: now,
+        lastRunAt: finishedAt,
+        nextRunAt: finalNextRun,
+        updatedAt: finishedAt,
       },
     });
 
@@ -253,18 +332,18 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       error: error.message || "Error al procesar la difusión",
     };
   } finally {
+    activeLocks.delete(campaignId);
     for (const { client } of connectedClients.values()) {
       try {
         await client.disconnect();
-      } catch (e) {
-        // Ignorar error al desconectar
-      }
+      } catch {}
     }
   }
 }
 
 /**
  * Procesador 24/7 para ejecutar todas las campañas activas cuya hora programada (nextRunAt) haya llegado.
+ * Escalonado para nunca ejecutar dos campañas del mismo usuario en el mismo segundo.
  */
 export async function processDueCampaigns(): Promise<{
   processedCount: number;
@@ -287,12 +366,26 @@ export async function processDueCampaigns(): Promise<{
         },
       },
     },
-    take: 10,
+    orderBy: { nextRunAt: "asc" },
+    take: 5,
   });
 
   const details = [];
+  const processedUsersInThisTick = new Set<string>();
 
   for (const camp of dueCampaigns) {
+    // Si el usuario tiene varias campañas vencidas al mismo tiempo, ejecutamos la primera ahora y escalonamos la segunda +5 minutos para que no choquen
+    if (processedUsersInThisTick.has(camp.userId)) {
+      await prisma.campaign.update({
+        where: { id: camp.id },
+        data: {
+          nextRunAt: new Date(Date.now() + 5 * 60 * 1000),
+        },
+      });
+      continue;
+    }
+
+    processedUsersInThisTick.add(camp.userId);
     const res = await runCampaignBroadcast(camp.id);
     const sent = res.results.filter((r) => r.status === "SENT").length;
     const failed = res.results.filter((r) => r.status === "FAILED").length;
@@ -305,7 +398,7 @@ export async function processDueCampaigns(): Promise<{
   }
 
   return {
-    processedCount: dueCampaigns.length,
+    processedCount: details.length,
     details,
   };
 }

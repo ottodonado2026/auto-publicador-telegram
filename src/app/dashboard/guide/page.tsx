@@ -180,8 +180,8 @@ export default function ClientGuidePage() {
                 <div className="text-xs font-black text-neutral-400 uppercase">Pase Express (1 Día)</div>
                 <div className="text-lg font-black mt-1">$1.25 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
-                  <div>• Hasta 15 grupos</div>
-                  <div>• <strong>50 envíos / día</strong></div>
+                  <div>• Hasta 25 grupos</div>
+                  <div>• <strong>100 envíos / día</strong></div>
                   <div>• Hasta 2 Campañas Activas</div>
                   <div>• 1 Cuenta TG (+Opción $3 extra)</div>
                 </div>
@@ -193,8 +193,8 @@ export default function ClientGuidePage() {
                 <div className="text-xs font-black text-amber-400 uppercase">Semanal (7 Días)</div>
                 <div className="text-lg font-black mt-1">$7.00 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
-                  <div>• Hasta 30 grupos</div>
-                  <div>• <strong>150 envíos / día</strong></div>
+                  <div>• Hasta 50 grupos</div>
+                  <div>• <strong>200 envíos / día</strong></div>
                   <div>• Hasta 3 Campañas Activas</div>
                   <div>• $1.00 USD / día (20% OFF)</div>
                 </div>
@@ -206,8 +206,8 @@ export default function ClientGuidePage() {
                 <div className="text-xs font-black text-[#229ED9] uppercase">Quincenal (15 Días)</div>
                 <div className="text-lg font-black mt-1">$13.50 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
-                  <div>• Hasta 60 grupos</div>
-                  <div>• <strong>250 envíos / día</strong></div>
+                  <div>• Hasta 100 grupos</div>
+                  <div>• <strong>300 envíos / día</strong></div>
                   <div>• Hasta 5 Campañas Activas</div>
                   <div>• <strong>Hasta 2 Cuentas TG</strong></div>
                 </div>
@@ -219,7 +219,7 @@ export default function ClientGuidePage() {
                 <div className="text-xs font-black text-emerald-400 uppercase">Mensual (30 Días)</div>
                 <div className="text-lg font-black mt-1">$24.00 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
-                  <div>• Hasta 100 grupos</div>
+                  <div>• <strong>Grupos Ilimitados</strong></div>
                   <div>• <strong>500 envíos / día</strong></div>
                   <div>• Hasta 8 Campañas Activas</div>
                   <div>• <strong>Hasta 3 Cuentas TG</strong></div>

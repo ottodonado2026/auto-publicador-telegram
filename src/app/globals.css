@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --sidebar-width: 16rem;
+}
+
+html.sidebar-collapsed {
+  --sidebar-width: 5rem;
+}
+
+/* Ajuste inteligente del margen principal según estado del Sidebar (Expandido / Colapsado / Móvil) */
+@media (min-width: 1024px) {
+  .ml-64 {
+    margin-left: var(--sidebar-width) !important;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@media (max-width: 1023px) {
+  .ml-64 {
+    margin-left: 0 !important;
+    padding-top: 5rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
 /* Estilos de Tema Oscuro y Claro pulidos con alto contraste */
 html.dark {
   --bg-app: #12151B;

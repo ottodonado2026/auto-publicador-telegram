@@ -9,7 +9,10 @@ export async function GET() {
   try {
     const session = await requireAuth();
 
-    const [campaigns, telegramAccount, membership, user] = await Promise.all([
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const [campaigns, telegramAccount, membership, user, todaySentCount] = await Promise.all([
       prisma.campaign.findMany({
         where: { userId: session.userId },
         include: {
@@ -17,7 +20,7 @@ export async function GET() {
             select: { logs: true },
           },
           logs: {
-            take: 10,
+            take: 50,
             orderBy: { createdAt: "desc" },
           },
         },
@@ -40,13 +43,26 @@ export async function GET() {
           subscription: true,
         },
       }),
+      prisma.messageLog.count({
+        where: {
+          campaign: { userId: session.userId },
+          status: "SENT",
+          createdAt: { gte: startOfDay },
+        },
+      }),
     ]);
+
+    const maxCampQuota = user?.subscription?.maxCampaigns || 2;
+    const maxDailyPosts =
+      maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
 
     return NextResponse.json({
       campaigns,
       telegramAccount,
       membership,
       user,
+      todaySentCount,
+      maxDailyPosts,
     });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {

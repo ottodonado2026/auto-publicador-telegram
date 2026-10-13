@@ -200,19 +200,31 @@ export default function ClientCampaignsPage() {
     }
   };
 
+  const maxCampQuota = sessionUser?.subscription?.maxCampaigns || 2;
+  const maxGroupsAllowed =
+    maxCampQuota >= 8 ? 9999 : maxCampQuota >= 5 ? 100 : maxCampQuota >= 3 ? 50 : 25;
+
   // Alternar selección de un grupo detectado
   const toggleGroupSelection = (identifier: string) => {
     if (groupPills.includes(identifier)) {
       setGroupPills(groupPills.filter((p) => p !== identifier));
     } else {
+      if (groupPills.length >= maxGroupsAllowed) {
+        setError(
+          `Tu plan actual permite hasta ${maxGroupsAllowed} grupos por campaña. Amplía tu plan si deseas seleccionar más grupos.`
+        );
+        return;
+      }
+      setError(null);
       setGroupPills([...groupPills, identifier]);
     }
   };
 
-  // Seleccionar o desmarcar todos los grupos
+  // Seleccionar o desmarcar todos los grupos (hasta el tope del plan)
   const selectAllGroups = () => {
     const all = detectedGroups.map((g) => g.link || g.username || g.title);
-    setGroupPills(Array.from(new Set([...groupPills, ...all])));
+    const merged = Array.from(new Set([...groupPills, ...all])).slice(0, maxGroupsAllowed);
+    setGroupPills(merged);
   };
 
   const clearAllGroups = () => {
@@ -221,6 +233,12 @@ export default function ClientCampaignsPage() {
 
   const addGroupPill = () => {
     if (!linkInput.trim()) return;
+    if (groupPills.length >= maxGroupsAllowed) {
+      setError(
+        `Has alcanzado el tope de ${maxGroupsAllowed} grupos de tu plan actual.`
+      );
+      return;
+    }
     const clean = linkInput.trim().replace(/^@/, "");
     if (!groupPills.includes(clean)) {
       setGroupPills([...groupPills, clean]);
@@ -725,7 +743,7 @@ export default function ClientCampaignsPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold">
-                        Grupos de Destino ({groupPills.length} seleccionados)
+                        Grupos de Destino ({groupPills.length} / {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed} seleccionados según tu plan)
                       </label>
                       <button
                         type="button"
