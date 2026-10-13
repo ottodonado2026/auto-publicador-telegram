@@ -889,7 +889,7 @@ export default function LandingPage() {
         isDark ? "bg-[#0F1319] text-[#F1F5F9]" : "bg-[#E9ECF0] text-[#0F172A]"
       }`}
     >
-      {/* BARRA SUPERIOR DE NAVEGACIÓN (STICKY + IDIOMAS + MONEDAS + CTAs) */}
+      {/* BARRA SUPERIOR DE NAVEGACIÓN MINIMALISTA Y DESPEJADA */}
       <header
         className={`sticky top-0 z-50 backdrop-blur-md border-b transition-colors ${
           isDark
@@ -897,29 +897,24 @@ export default function LandingPage() {
             : "bg-[#F4F6F9]/95 border-[#CBD5E1]"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-[#229ED9] shadow-[0_4px_14px_rgba(34,158,217,0.35)] flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          {/* Logo Limpio sin textos largos */}
+          <a href="#" className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#229ED9] shadow-[0_4px_14px_rgba(34,158,217,0.35)] flex-shrink-0">
               <img src="/ottbot-logo.png" alt="OttBot PRO" className="w-full h-full object-cover" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-lg tracking-tight">
-                  Ott<span className="text-[#229ED9]">Bot</span>
-                </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 uppercase">
-                  PRO 24/7
-                </span>
-              </div>
-              <span className={`text-[11px] font-semibold hidden sm:block ${isDark ? "text-neutral-400" : "text-slate-500"}`}>
-                Auto-Publicador de Anuncios & Copys en Telegram
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="font-black text-lg tracking-tight">
+                Ott<span className="text-[#229ED9]">Bot</span>
+              </span>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 uppercase">
+                PRO
               </span>
             </div>
-          </div>
+          </a>
 
-          {/* Links Centrales (Desktop) */}
-          <nav className="hidden xl:flex items-center gap-6 text-xs font-extrabold">
+          {/* Links Centrales en 1 sola línea limpia (Desktop) */}
+          <nav className="hidden lg:flex items-center gap-8 text-xs font-extrabold whitespace-nowrap">
             <a href="#simulador" className="hover:text-[#229ED9] transition-colors">
               {t.nav.howItWorks}
             </a>
@@ -934,35 +929,35 @@ export default function LandingPage() {
             </a>
           </nav>
 
-          {/* Selectores de Idioma, Moneda, Tema y Botones de Acceso */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Selector de Idioma (ES, EN, PT, FR) */}
+          {/* Solo Controles de Idioma, Moneda y Tema (Sin saturar con botones de texto) */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Selector de Idioma Compacto */}
             <div className="relative">
               <select
                 aria-label="Seleccionar idioma"
                 value={lang}
                 onChange={(e) => setLang(e.target.value as LangCode)}
-                className={`appearance-none pl-2.5 pr-6 py-2 rounded-xl text-[11px] font-black border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 ${
+                className={`appearance-none pl-2.5 pr-6 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 ${
                   isDark
                     ? "bg-[#1E232E] border-[#2E3646] text-white"
                     : "bg-white border-slate-300 text-slate-800 shadow-xs"
                 }`}
               >
-                <option value="es">🌐 ES • Español</option>
-                <option value="en">🇺🇸 EN • English</option>
-                <option value="pt">🇧🇷 PT • Português</option>
-                <option value="fr">🇫🇷 FR • Français</option>
+                <option value="es">🌐 ES</option>
+                <option value="en">🇺🇸 EN</option>
+                <option value="pt">🇧🇷 PT</option>
+                <option value="fr">🇫🇷 FR</option>
               </select>
-              <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             </div>
 
-            {/* Selector de Moneda (Por defecto USD + EUR + Latinoamérica) */}
+            {/* Selector de Moneda Compacto */}
             <div className="relative">
               <select
                 aria-label="Seleccionar moneda"
                 value={currencyCode}
                 onChange={(e) => setCurrencyCode(e.target.value)}
-                className={`appearance-none pl-2.5 pr-6 py-2 rounded-xl text-[11px] font-black border cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-w-[115px] sm:max-w-[165px] truncate ${
+                className={`appearance-none pl-2.5 pr-6 py-1.5 rounded-xl text-[11px] font-black border cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-w-[125px] sm:max-w-[155px] truncate ${
                   isDark
                     ? "bg-[#1E232E] border-emerald-500/40 text-emerald-400"
                     : "bg-white border-emerald-600/40 text-emerald-700 shadow-xs"
@@ -970,11 +965,11 @@ export default function LandingPage() {
               >
                 {CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.flag} {c.name}
+                    {c.flag} {c.code} ({c.symbol})
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500" />
+              <ChevronDown className="w-3.5 h-3.5 pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-emerald-500" />
             </div>
 
             {/* Botón Tema Claro / Oscuro */}
@@ -990,25 +985,6 @@ export default function LandingPage() {
             >
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-
-            <Link
-              href="/login"
-              className={`hidden md:inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-black border transition-all ${
-                isDark
-                  ? "bg-[#1E232E] border-[#2E3646] text-white hover:border-[#229ED9]"
-                  : "bg-white border-slate-300 text-slate-800 hover:border-[#229ED9]"
-              }`}
-            >
-              {t.nav.login}
-            </Link>
-
-            <Link
-              href="/login?mode=register"
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black shadow-lg shadow-[#229ED9]/25 transition-all whitespace-nowrap"
-            >
-              <Sparkles className="w-3.5 h-3.5 hidden sm:inline" />
-              <span>{t.nav.freeTrial}</span>
-            </Link>
           </div>
         </div>
       </header>
@@ -1563,7 +1539,7 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer
-        className={`py-8 px-4 border-t text-center text-xs font-semibold ${
+        className={`pt-8 pb-24 px-4 border-t text-center text-xs font-semibold ${
           isDark
             ? "bg-[#12161E] border-[#262C3A] text-neutral-400"
             : "bg-[#E2E6EC] border-[#CBD5E1] text-slate-600"
@@ -1585,6 +1561,36 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* DOCK FLOTANTE INFERIOR DE ACCESO RÁPIDO (FUERA DEL MENÚ SUPERIOR) */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md pointer-events-none">
+        <div
+          className={`pointer-events-auto p-2 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2 ${
+            isDark
+              ? "bg-[#141820]/95 border-[#2B3344] shadow-[0_12px_40px_rgba(0,0,0,0.65)]"
+              : "bg-white/95 border-slate-300 shadow-[0_12px_40px_rgba(15,23,42,0.18)]"
+          }`}
+        >
+          <Link
+            href="/login"
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black text-center border transition-all whitespace-nowrap ${
+              isDark
+                ? "bg-[#1E232E] hover:bg-[#262D3B] border-[#323B4E] text-white"
+                : "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800"
+            }`}
+          >
+            {t.nav.login}
+          </Link>
+
+          <Link
+            href="/login?mode=register"
+            className="flex-[1.4] py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#229ED9] to-emerald-500 hover:from-sky-500 hover:to-emerald-400 text-white text-xs font-black text-center shadow-lg shadow-[#229ED9]/25 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{t.nav.freeTrial}</span>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

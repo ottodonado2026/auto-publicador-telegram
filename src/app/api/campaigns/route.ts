@@ -12,10 +12,20 @@ export async function GET() {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const [campaigns, telegramAccount, membership, user, todayLogs] = await Promise.all([
+    const [campaigns, telegramAccounts, membership, user, todayLogs] = await Promise.all([
       prisma.campaign.findMany({
         where: { userId: session.userId },
         include: {
+          telegramAccount: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              firstName: true,
+              username: true,
+              status: true,
+              isSystemAccount: true,
+            },
+          },
           _count: {
             select: { logs: true },
           },
@@ -26,8 +36,9 @@ export async function GET() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.telegramAccount.findFirst({
+      prisma.telegramAccount.findMany({
         where: { userId: session.userId },
+        orderBy: { createdAt: "asc" },
       }),
       validateUserSubscription(session.userId),
       prisma.user.findUnique({
@@ -61,9 +72,15 @@ export async function GET() {
       }),
     ]);
 
+    const telegramAccount = telegramAccounts.find((a) => a.status === "CONNECTED") || telegramAccounts[0] || null;
+    const connectedAccountsCount = Math.max(1, telegramAccounts.filter((a) => a.status === "CONNECTED").length);
+
     const maxCampQuota = user?.subscription?.maxCampaigns || 2;
-    const maxDailyPosts =
+    const baseDailyPosts =
       maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
+    // Si tiene cuentas adicionales de Telegram vinculadas, suma +100 envíos diarios por cada cuenta extra activa
+    const extraAccountsBonusPosts = Math.max(0, connectedAccountsCount - 1) * 100;
+    const maxDailyPosts = baseDailyPosts + extraAccountsBonusPosts;
 
     // Agrupar publicaciones de hoy por grupo para el panel de métricas del usuario
     const groupMap = new Map<
@@ -114,6 +131,7 @@ export async function GET() {
     return NextResponse.json({
       campaigns: enrichedCampaigns,
       telegramAccount,
+      telegramAccounts,
       membership,
       user,
       todaySentCount,
@@ -141,7 +159,15 @@ export async function POST(req: NextRequest) {
       }, { status: 403 });
     }
 
-    const { name, messageContent, mediaUrl, intervalMinutes, targetGroupIds, useSystemFarm } = await req.json();
+    const {
+      name,
+      messageContent,
+      mediaUrl,
+      intervalMinutes,
+      targetGroupIds,
+      useSystemFarm,
+      telegramAccountId,
+    } = await req.json();
 
     if (!name || !messageContent) {
       return NextResponse.json({ error: "El nombre y el texto del anuncio son obligatorios" }, { status: 400 });
@@ -158,14 +184,23 @@ export async function POST(req: NextRequest) {
     ]);
 
     const maxAllowedActive = userSub?.maxCampaigns || 2;
-    // Si aún tiene cupo de campañas activas, se activa de inmediato; si ya llenó su cupo, se guarda en PAUSED en su Biblioteca de Copys
     const initialStatus = activeCount < maxAllowedActive ? "ACTIVE" : "PAUSED";
 
-    let account = await prisma.telegramAccount.findFirst({
-      where: useSystemFarm 
-        ? { isSystemAccount: true, status: "CONNECTED" } 
-        : { userId: session.userId, status: "CONNECTED" },
-    });
+    let account = null;
+
+    if (!useSystemFarm && telegramAccountId) {
+      account = await prisma.telegramAccount.findFirst({
+        where: { id: telegramAccountId, userId: session.userId },
+      });
+    }
+
+    if (!account) {
+      account = await prisma.telegramAccount.findFirst({
+        where: useSystemFarm
+          ? { isSystemAccount: true, status: "CONNECTED" }
+          : { userId: session.userId, status: "CONNECTED" },
+      });
+    }
 
     if (!account) {
       account = await prisma.telegramAccount.findFirst({
@@ -224,7 +259,17 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth();
-    const { id, status, name, messageContent, mediaUrl, intervalMinutes, targetGroupIds, useSystemFarm } = await req.json();
+    const {
+      id,
+      status,
+      name,
+      messageContent,
+      mediaUrl,
+      intervalMinutes,
+      targetGroupIds,
+      useSystemFarm,
+      telegramAccountId,
+    } = await req.json();
 
     if (!id) {
       return NextResponse.json({ error: "ID de campaña requerido" }, { status: 400 });
@@ -308,14 +353,26 @@ export async function PATCH(req: NextRequest) {
     if (intervalMinutes !== undefined) updateData.intervalMinutes = Number(intervalMinutes) || 60;
     if (targetGroupIds !== undefined) updateData.targetGroupIds = targetGroupIds;
 
-    if (useSystemFarm !== undefined) {
-      const account = await prisma.telegramAccount.findFirst({
-        where: useSystemFarm
-          ? { isSystemAccount: true, status: "CONNECTED" }
-          : { userId: session.userId, status: "CONNECTED" },
+    if (useSystemFarm) {
+      const farmAccount = await prisma.telegramAccount.findFirst({
+        where: { isSystemAccount: true, status: "CONNECTED" },
       });
-      if (account) {
-        updateData.telegramAccountId = account.id;
+      if (farmAccount) {
+        updateData.telegramAccountId = farmAccount.id;
+      }
+    } else if (telegramAccountId) {
+      const userAccount = await prisma.telegramAccount.findFirst({
+        where: { id: telegramAccountId, userId: session.userId },
+      });
+      if (userAccount) {
+        updateData.telegramAccountId = userAccount.id;
+      }
+    } else if (useSystemFarm === false) {
+      const defaultAccount = await prisma.telegramAccount.findFirst({
+        where: { userId: session.userId, status: "CONNECTED" },
+      });
+      if (defaultAccount) {
+        updateData.telegramAccountId = defaultAccount.id;
       }
     }
 

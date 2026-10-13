@@ -52,7 +52,9 @@ export default function ClientCampaignsPage() {
   const [linkInput, setLinkInput] = useState("");
   const [groupPills, setGroupPills] = useState<string[]>([]);
 
-  // Detección automática de grupos de Telegram
+  // Detección automática de grupos de Telegram y Selección de Cuenta Emisora
+  const [userAccounts, setUserAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [detectedGroups, setDetectedGroups] = useState<any[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [showGroupsModal, setShowGroupsModal] = useState(false);
@@ -72,6 +74,15 @@ export default function ClientCampaignsPage() {
       const campData = await campRes.json();
 
       if (authData.authenticated) setSessionUser(authData.user);
+      if (Array.isArray(campData.telegramAccounts)) {
+        const connected = campData.telegramAccounts.filter(
+          (a: any) => a.status === "CONNECTED" && !a.isSystemAccount
+        );
+        setUserAccounts(connected);
+        if (connected.length > 0 && !selectedAccountId) {
+          setSelectedAccountId(connected[0].id);
+        }
+      }
       if (campData.campaigns) {
         setSavedCampaigns(campData.campaigns);
 
@@ -92,6 +103,9 @@ export default function ClientCampaignsPage() {
               setMediaUrl(targetCamp.mediaUrl || "");
               setIntervalMinutes(targetCamp.intervalMinutes || 60);
               setGroupPills(Array.isArray(targetCamp.targetGroupIds) ? targetCamp.targetGroupIds : []);
+              if (targetCamp.telegramAccountId) {
+                setSelectedAccountId(targetCamp.telegramAccountId);
+              }
               setActiveTab("CREATE");
             }
           }
@@ -181,12 +195,16 @@ export default function ClientCampaignsPage() {
     }, 0);
   };
 
-  // Cargar grupos automáticamente de Telegram
-  const loadTelegramGroups = async () => {
+  // Cargar grupos automáticamente de la cuenta de Telegram seleccionada
+  const loadTelegramGroups = async (accountIdOverride?: string) => {
     try {
       setLoadingGroups(true);
       setError(null);
-      const res = await fetch("/api/telegram/dialogs");
+      const targetAccId = accountIdOverride || selectedAccountId;
+      const url = targetAccId
+        ? `/api/telegram/dialogs?accountId=${encodeURIComponent(targetAccId)}`
+        : "/api/telegram/dialogs";
+      const res = await fetch(url);
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.message || "No se pudieron obtener los grupos de tu Telegram.");
@@ -201,8 +219,11 @@ export default function ClientCampaignsPage() {
   };
 
   const maxCampQuota = sessionUser?.subscription?.maxCampaigns || 2;
-  const maxGroupsAllowed =
-    maxCampQuota >= 8 ? 9999 : maxCampQuota >= 5 ? 100 : maxCampQuota >= 3 ? 50 : 25;
+  const baseGroupsAllowed =
+    maxCampQuota >= 8 ? 100 : maxCampQuota >= 5 ? 60 : maxCampQuota >= 3 ? 50 : 25;
+  // Cada cuenta adicional de Telegram conectada suma +25 grupos extra independientes
+  const extraAccountsBonusGroups = Math.max(0, userAccounts.length - 1) * 25;
+  const maxGroupsAllowed = baseGroupsAllowed + extraAccountsBonusGroups;
 
   // Alternar selección de un grupo detectado
   const toggleGroupSelection = (identifier: string) => {
@@ -211,7 +232,7 @@ export default function ClientCampaignsPage() {
     } else {
       if (groupPills.length >= maxGroupsAllowed) {
         setError(
-          `Tu plan actual permite hasta ${maxGroupsAllowed} grupos por campaña. Amplía tu plan si deseas seleccionar más grupos.`
+          `Tu plan actual permite hasta ${maxGroupsAllowed} grupos por campaña. Amplía tu plan o vincula otra cuenta para seleccionar más grupos.`
         );
         return;
       }
@@ -292,6 +313,9 @@ export default function ClientCampaignsPage() {
     setMediaUrl(c.mediaUrl || "");
     setIntervalMinutes(c.intervalMinutes || 60);
     setGroupPills(Array.isArray(c.targetGroupIds) ? c.targetGroupIds : []);
+    if (c.telegramAccountId) {
+      setSelectedAccountId(c.telegramAccountId);
+    }
     setActiveTab("CREATE");
   };
 
@@ -317,6 +341,7 @@ export default function ClientCampaignsPage() {
           intervalMinutes: Number(intervalMinutes),
           targetGroupIds: groupPills,
           useSystemFarm,
+          telegramAccountId: selectedAccountId || undefined,
         }),
       });
 
@@ -739,6 +764,47 @@ export default function ClientCampaignsPage() {
                     </div>
                   </div>
 
+                  {/* SELECTOR DE CUENTA DE TELEGRAM EMISORA (SI TIENE 1 O VARIAS CUENTAS) */}
+                  {!useSystemFarm && userAccounts.length > 0 && (
+                    <div className={`p-3.5 rounded-2xl border ${
+                      isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-300"
+                    }`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <label className="text-xs font-extrabold text-[#229ED9]">
+                          📱 Cuenta de Telegram Emisora para esta Campaña ({userAccounts.length} vinculada{userAccounts.length > 1 ? "s" : ""})
+                        </label>
+                        {userAccounts.length > 1 && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            +{extraAccountsBonusGroups} Grupos Extra Activos por Multi-Cuenta
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        aria-label="Seleccionar cuenta de Telegram emisora"
+                        value={selectedAccountId}
+                        onChange={(e) => {
+                          const newAccId = e.target.value;
+                          setSelectedAccountId(newAccId);
+                          if (showGroupsModal) {
+                            loadTelegramGroups(newAccId);
+                          }
+                        }}
+                        className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340] text-white" : "bg-white border-neutral-300 text-neutral-900"
+                        }`}
+                      >
+                        {userAccounts.map((acc, index) => (
+                          <option key={acc.id} value={acc.id}>
+                            Cuenta #{index + 1}: {acc.phoneNumber} {acc.firstName ? `(${acc.firstName})` : ""} {acc.username ? `• @${acc.username}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-neutral-400 mt-1.5">
+                        Cada cuenta de Telegram detecta sus propios grupos independientes para que puedas publicar diferentes copys en los grupos de cada número.
+                      </p>
+                    </div>
+                  )}
+
                   {/* SELECCIÓN AUTOMÁTICA DE GRUPOS DE TELEGRAM CON CHECKBOXES */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -747,12 +813,12 @@ export default function ClientCampaignsPage() {
                       </label>
                       <button
                         type="button"
-                        onClick={loadTelegramGroups}
+                        onClick={() => loadTelegramGroups()}
                         disabled={loadingGroups}
                         className="text-xs font-extrabold text-[#229ED9] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${loadingGroups ? "animate-spin" : ""}`} />
-                        <span>{loadingGroups ? "Cargando..." : "Detectar mis Grupos en Telegram"}</span>
+                        <span>{loadingGroups ? "Cargando..." : "Detectar Grupos de esta Cuenta"}</span>
                       </button>
                     </div>
 

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
@@ -6,26 +6,50 @@ import { createTelegramClient } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   let client: any = null;
 
   try {
     const session = await requireAuth();
+    const { searchParams } = new URL(req.url);
+    const requestedAccountId = searchParams.get("accountId");
 
-    // Buscar la cuenta conectada del usuario
-    const account = await prisma.telegramAccount.findFirst({
-      where: { 
-        userId: session.userId, 
+    // Obtener todas las cuentas conectadas del usuario
+    const connectedAccounts = await prisma.telegramAccount.findMany({
+      where: {
+        userId: session.userId,
         status: "CONNECTED",
         sessionString: { not: null },
       },
+      orderBy: { createdAt: "asc" },
     });
+
+    if (connectedAccounts.length === 0) {
+      return NextResponse.json({
+        success: false,
+        groups: [],
+        accounts: [],
+        message: "No tienes una cuenta de Telegram conectada aún.",
+      });
+    }
+
+    // Elegir la cuenta solicitada o por defecto la primera cuenta conectada
+    const account =
+      (requestedAccountId
+        ? connectedAccounts.find((a) => a.id === requestedAccountId)
+        : null) || connectedAccounts[0];
 
     if (!account || !account.sessionString) {
       return NextResponse.json({
         success: false,
         groups: [],
-        message: "No tienes una cuenta de Telegram conectada aún.",
+        accounts: connectedAccounts.map((a) => ({
+          id: a.id,
+          phoneNumber: a.phoneNumber,
+          firstName: a.firstName,
+          username: a.username,
+        })),
+        message: "La cuenta de Telegram seleccionada no tiene sesión activa.",
       });
     }
 
@@ -33,8 +57,8 @@ export async function GET() {
     client = createTelegramClient(sessionString);
     await client.connect();
 
-    // Obtener los diálogos (chats) de la cuenta de Telegram
-    const dialogs = await client.getDialogs({ limit: 100 });
+    // Obtener los diálogos (chats) exclusivos de esa cuenta de Telegram
+    const dialogs = await client.getDialogs({ limit: 120 });
 
     // Filtrar solo grupos, supergrupos y canales
     const groups = dialogs
@@ -51,16 +75,24 @@ export async function GET() {
           isChannel: !!d.isChannel,
           isGroup: !!d.isGroup,
           unreadCount: d.unreadCount || 0,
+          accountPhone: account.phoneNumber,
         };
       });
 
     return NextResponse.json({
       success: true,
       account: {
+        id: account.id,
         phoneNumber: account.phoneNumber,
         firstName: account.firstName,
         username: account.username,
       },
+      accounts: connectedAccounts.map((a) => ({
+        id: a.id,
+        phoneNumber: a.phoneNumber,
+        firstName: a.firstName,
+        username: a.username,
+      })),
       groups,
     });
   } catch (error: any) {
