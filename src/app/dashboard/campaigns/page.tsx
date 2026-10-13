@@ -219,10 +219,12 @@ export default function ClientCampaignsPage() {
   };
 
   const maxCampQuota = sessionUser?.subscription?.maxCampaigns || 2;
+  const maxAccountsPaid = sessionUser?.subscription?.maxAccounts || 1;
+  const effectivePaidAccounts = Math.min(userAccounts.length, maxAccountsPaid);
   const baseGroupsAllowed =
     maxCampQuota >= 8 ? 100 : maxCampQuota >= 5 ? 60 : maxCampQuota >= 3 ? 50 : 25;
-  // Cada cuenta adicional de Telegram conectada suma +25 grupos extra independientes
-  const extraAccountsBonusGroups = Math.max(0, userAccounts.length - 1) * 25;
+  // Solo suma +25 grupos extra si la cuenta adicional está pagada y activa en el ciclo vigente
+  const extraAccountsBonusGroups = Math.max(0, effectivePaidAccounts - 1) * 25;
   const maxGroupsAllowed = baseGroupsAllowed + extraAccountsBonusGroups;
 
   // Alternar selección de un grupo detectado
@@ -771,9 +773,9 @@ export default function ClientCampaignsPage() {
                     }`}>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                         <label className="text-xs font-extrabold text-[#229ED9]">
-                          📱 Cuenta de Telegram Emisora para esta Campaña ({userAccounts.length} vinculada{userAccounts.length > 1 ? "s" : ""})
+                          📱 Cuenta de Telegram Emisora ({effectivePaidAccounts} activa{effectivePaidAccounts > 1 ? "s" : ""} en tu ciclo actual)
                         </label>
-                        {userAccounts.length > 1 && (
+                        {extraAccountsBonusGroups > 0 && (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                             +{extraAccountsBonusGroups} Grupos Extra Activos por Multi-Cuenta
                           </span>
@@ -793,14 +795,18 @@ export default function ClientCampaignsPage() {
                           isDark ? "bg-[#1E2229] border-[#2D3340] text-white" : "bg-white border-neutral-300 text-neutral-900"
                         }`}
                       >
-                        {userAccounts.map((acc, index) => (
-                          <option key={acc.id} value={acc.id}>
-                            Cuenta #{index + 1}: {acc.phoneNumber} {acc.firstName ? `(${acc.firstName})` : ""} {acc.username ? `• @${acc.username}` : ""}
-                          </option>
-                        ))}
+                        {userAccounts.map((acc, index) => {
+                          const isLockedInCurrentCycle = index >= maxAccountsPaid;
+                          return (
+                            <option key={acc.id} value={acc.id} disabled={isLockedInCurrentCycle}>
+                              {isLockedInCurrentCycle ? "🔒 " : ""}Cuenta #{index + 1}: {acc.phoneNumber} {acc.firstName ? `(${acc.firstName})` : ""}{" "}
+                              {isLockedInCurrentCycle ? "— Activa tu Cuenta Extra para este ciclo o sube al Plan Quincenal/Mensual" : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                       <p className="text-[11px] text-neutral-400 mt-1.5">
-                        Cada cuenta de Telegram detecta sus propios grupos independientes para que puedas publicar diferentes copys en los grupos de cada número.
+                        Cada cuenta activa en tu ciclo detecta sus propios grupos independientes para publicar diferentes copys en los grupos de cada número.
                       </p>
                     </div>
                   )}

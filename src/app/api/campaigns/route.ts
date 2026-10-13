@@ -73,13 +73,15 @@ export async function GET() {
     ]);
 
     const telegramAccount = telegramAccounts.find((a) => a.status === "CONNECTED") || telegramAccounts[0] || null;
-    const connectedAccountsCount = Math.max(1, telegramAccounts.filter((a) => a.status === "CONNECTED").length);
+    const rawConnectedCount = Math.max(1, telegramAccounts.filter((a) => a.status === "CONNECTED").length);
+    const maxAccountsPaidInCycle = user?.subscription?.maxAccounts || 1;
+    const effectivePaidAccountsCount = Math.min(rawConnectedCount, maxAccountsPaidInCycle);
 
     const maxCampQuota = user?.subscription?.maxCampaigns || 2;
     const baseDailyPosts =
       maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
-    // Si tiene cuentas adicionales de Telegram vinculadas, suma +100 envíos diarios por cada cuenta extra activa
-    const extraAccountsBonusPosts = Math.max(0, connectedAccountsCount - 1) * 100;
+    // Solo suma +100 envíos diarios extra si la cuenta adicional está pagada y vigente en el ciclo actual
+    const extraAccountsBonusPosts = Math.max(0, effectivePaidAccountsCount - 1) * 100;
     const maxDailyPosts = baseDailyPosts + extraAccountsBonusPosts;
 
     // Agrupar publicaciones de hoy por grupo para el panel de métricas del usuario

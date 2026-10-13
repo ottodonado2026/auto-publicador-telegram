@@ -370,7 +370,7 @@ export default function ClientPlansPage() {
           </div>
         </div>
 
-        {/* ADD-ON: CUENTA ADICIONAL DE TELEGRAM POR $3.00 USD PAGO ÚNICO (ALINEADO EN UNA SOLA FILA) */}
+        {/* ADD-ON: CUENTA ADICIONAL DE TELEGRAM POR $3.00 USD POR CICLO DE PLAN (ALINEADO EN UNA SOLA FILA) */}
         <div className={`mb-8 rounded-3xl p-6 border-2 border-dashed flex flex-col lg:flex-row lg:items-center justify-between gap-5 shadow-md ${
           isDark ? "bg-[#191D24] border-[#229ED9]/40" : "bg-sky-50/60 border-[#229ED9]/40"
         }`}>
@@ -381,14 +381,14 @@ export default function ClientPlansPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <h3 className="text-sm sm:text-base font-black">
-                  ¿Tienes el Pase Express o Semanal y quieres agregar otra Cuenta de Telegram?
+                  ¿Quieres agregar otra Cuenta de Telegram con +25 Grupos y +100 Envíos Extra?
                 </h3>
                 <span className="inline-flex items-center whitespace-nowrap flex-shrink-0 text-[10px] font-black px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 uppercase tracking-wider">
-                  ★ Pago Único ($3.00 USD)
+                  ★ $3.00 USD / Ciclo del Plan
                 </span>
               </div>
               <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                Desbloquea <strong>+1 Cuenta Adicional de Telegram</strong> para vincular un segundo o tercer número telefónico en tu mismo panel. Así repartes tus grupos entre varias cuentas propias sin riesgo de saturación.
+                Desbloquea <strong>+1 Cuenta Adicional de Telegram</strong> durante la vigencia de tu plan actual. Cada cuenta extra te suma <strong>+25 grupos independientes</strong> y <strong>+100 publicaciones diarias</strong> (o sube al Plan Quincenal/Mensual que ya incluyen 2 y 3 cuentas).
               </p>
             </div>
           </div>
@@ -617,7 +617,7 @@ export default function ClientPlansPage() {
                       Adicionar +1 Cuenta de Telegram
                     </h2>
                     <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 uppercase whitespace-nowrap">
-                      $3.00 USD Pago Único
+                      $3.00 USD / Ciclo
                     </span>
                   </div>
                   <p className="text-xs text-neutral-400 mt-0.5">
@@ -651,13 +651,13 @@ export default function ClientPlansPage() {
                     <div className="flex items-start gap-2 leading-relaxed">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>Doble alcance y cero saturación:</strong> El sistema te permite publicar en los grupos de tu Cuenta 1 y de tu Cuenta 2 de forma independiente.
+                        <strong>+25 Grupos y +100 Envíos Extra:</strong> Cada cuenta extra vinculada te permite escanear sus propios grupos independientes y suma +25 grupos y +100 publicaciones diarias durante tu ciclo activo.
                       </span>
                     </div>
                     <div className="flex items-start gap-2 leading-relaxed">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>Cupo permanente:</strong> Pagas <strong>$3.00 USD una sola vez</strong> con el saldo de tu Wallet y el cupo extra queda desbloqueado en tu perfil.
+                        <strong>Vigencia sincronizada con tu plan:</strong> La cuenta extra permanece activa durante la vigencia de tu plan actual (y se renueva por ciclo junto con tu membresía, o puedes elegir el Plan Quincenal/Mensual que ya incluyen 2 y 3 cuentas).
                       </span>
                     </div>
                   </div>

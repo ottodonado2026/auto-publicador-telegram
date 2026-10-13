@@ -12,15 +12,15 @@ export interface MembershipCheckResult {
 
 export function getPlanDetailsByRate(dailyRate: number) {
   if (dailyRate <= 0.85) {
-    return { name: "Plan Mensual Élite (30 Días)", days: 30, priceUSD: 24.0, dailyPostLimit: 500, maxGroups: 100 };
+    return { name: "Plan Mensual Élite (30 Días)", days: 30, priceUSD: 24.0, dailyPostLimit: 500, maxGroups: 100, baseMaxAccounts: 3 };
   }
   if (dailyRate <= 0.95) {
-    return { name: "Plan Quincenal PRO (15 Días)", days: 15, priceUSD: 13.5, dailyPostLimit: 300, maxGroups: 60 };
+    return { name: "Plan Quincenal PRO (15 Días)", days: 15, priceUSD: 13.5, dailyPostLimit: 300, maxGroups: 60, baseMaxAccounts: 2 };
   }
   if (dailyRate <= 1.05) {
-    return { name: "Plan Semanal (7 Días)", days: 7, priceUSD: 7.0, dailyPostLimit: 200, maxGroups: 40 };
+    return { name: "Plan Semanal (7 Días)", days: 7, priceUSD: 7.0, dailyPostLimit: 200, maxGroups: 50, baseMaxAccounts: 1 };
   }
-  return { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.25, dailyPostLimit: 100, maxGroups: 25 };
+  return { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.25, dailyPostLimit: 100, maxGroups: 25, baseMaxAccounts: 1 };
 }
 
 /**
@@ -30,7 +30,7 @@ export function getPlanDetailsByRate(dailyRate: number) {
  *    permite terminar las publicaciones del día sin pausar a mitad de camino.
  * 3. Cuando ya se cumplió el ciclo y venció expiresAt:
  *    - Si el usuario tiene saldo suficiente en su Wallet, cobra automáticamente de la Wallet y renueva su membresía
- *      para que sus campañas continúen todos los días sin interrupción.
+ *      (cobrando también las cuentas extra si las mantiene activas) para que sus campañas continúen todos los días.
  *    - Si NO tiene saldo en su Wallet, paraliza/pausa todas las campañas activas del usuario y marca la suscripción como EXPIRED.
  */
 export async function validateUserSubscription(userId: string): Promise<MembershipCheckResult> {
@@ -104,21 +104,34 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
 
   // El ciclo ya se cumplió: verificamos si tiene saldo en la Wallet para Cobro Automático
   const walletBalance = Number(user.walletBalance || 0);
+  const extraAccountsCount = Math.max(0, (subscription.maxAccounts || 1) - plan.baseMaxAccounts);
+  const extraAccountsCost = extraAccountsCount * 3.0; // $3.00 USD por cada cuenta extra en el nuevo ciclo
 
   let renewDays = 0;
   let renewPrice = 0;
   let renewName = "";
   let newDailyRate = Number(subscription.dailyRate || 1.25);
+  let renewedMaxAccounts = plan.baseMaxAccounts;
 
-  if (walletBalance >= plan.priceUSD) {
+  if (walletBalance >= plan.priceUSD + extraAccountsCost) {
+    renewDays = plan.days;
+    renewPrice = plan.priceUSD + extraAccountsCost;
+    renewName =
+      extraAccountsCount > 0
+        ? `${plan.name} + ${extraAccountsCount} Cuenta(s) Extra`
+        : plan.name;
+    renewedMaxAccounts = subscription.maxAccounts || plan.baseMaxAccounts;
+  } else if (walletBalance >= plan.priceUSD) {
     renewDays = plan.days;
     renewPrice = plan.priceUSD;
     renewName = plan.name;
+    renewedMaxAccounts = plan.baseMaxAccounts;
   } else if (walletBalance >= 1.25) {
     renewDays = 1;
     renewPrice = 1.25;
     renewName = "Pase Express (1 Día)";
     newDailyRate = 1.25;
+    renewedMaxAccounts = 1;
   }
 
   if (renewDays > 0 && renewPrice > 0) {
@@ -136,7 +149,7 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
           userId,
           amount: renewPrice,
           type: "DEBIT",
-          description: `Cobro Automático de Wallet: Renovación continua de ${renewName} (-$${renewPrice.toFixed(2)} USD)`,
+          description: `Cobro Automático de Wallet: Renovación de ${renewName} (-$${renewPrice.toFixed(2)} USD)`,
         },
       }),
       prisma.subscription.update({
@@ -145,6 +158,7 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
           status: SubscriptionStatus.ACTIVE,
           dailyRate: newDailyRate,
           expiresAt: newExpiresAt,
+          maxAccounts: renewedMaxAccounts,
         },
       }),
       prisma.payment.create({

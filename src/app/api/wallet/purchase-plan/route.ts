@@ -91,11 +91,13 @@ export async function POST(req: NextRequest) {
     // Calcular nueva fecha de expiración
     const now = new Date();
     const currentExpires = user.subscription?.expiresAt ? new Date(user.subscription.expiresAt) : now;
-    const baseDate = currentExpires > now ? currentExpires : now;
+    const isStillActive = currentExpires > now && user.subscription?.status === "ACTIVE";
+    const baseDate = isStillActive ? currentExpires : now;
     const newExpiresAt = new Date(baseDate.getTime() + plan.days * 24 * 60 * 60 * 1000);
 
-    // Conservar el mayor límite de cuentas si ya compró cuentas adicionales
-    const finalMaxAccounts = Math.max(user.subscription?.maxAccounts || 1, plan.maxAccounts);
+    // Las cuentas incluidas corresponden estrictamente al plan adquirido en este nuevo ciclo
+    // (evita que paguen una cuenta extra una sola vez y luego solo paguen el plan de 1 día indefinidamente)
+    const finalMaxAccounts = plan.maxAccounts;
 
     await prisma.$transaction([
       prisma.user.update({
@@ -109,7 +111,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           amount: plan.priceUSD,
           type: "DEBIT",
-          description: `Activación de ${plan.name} (+${plan.days} días)`,
+          description: `Activación de ${plan.name} (+${plan.days} días • Incluye hasta ${finalMaxAccounts} cuenta(s) TG)`,
         },
       }),
       prisma.subscription.upsert({
