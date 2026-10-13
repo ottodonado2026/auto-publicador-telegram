@@ -125,26 +125,54 @@ export async function POST(req: NextRequest) {
           if (sessionStr) {
             const tgClient = createTelegramClient(sessionStr);
             await tgClient.connect();
-            await tgClient.sendMessage("me", {
-              message: `🔐 [OttBot PRO - SuperAdmin 2FA]\n\nTu código de verificación de 5 dígitos para acceder al Panel Rey es:\n\n👉 **${securityCode}** 👈\n\nVálido por 10 minutos. No compartas este código con nadie.`,
-            });
+
+            const messageText = `🔐 [OttBot PRO - SuperAdmin 2FA]\n\nTu código de verificación de 5 dígitos para acceder al Panel Rey es:\n\n👉 **${securityCode}** 👈\n\nVálido por 10 minutos. No compartas este código con nadie.`;
+
+            // 1. Enviar a Mensajes Guardados de la cuenta de la granja (@ottbotoficial)
+            try {
+              await tgClient.sendMessage("me", { message: messageText });
+            } catch (eMe) {
+              console.warn("No se pudo enviar a me en Telegram:", eMe);
+            }
+
+            // 2. Enviar a la cuenta personal StreamZone (@streamzonesupport / +573002084859) para notificación push sonora
+            const recipients = ["streamzonesupport", "+573002084859"];
+            for (const r of recipients) {
+              try {
+                await tgClient.sendMessage(r, { message: messageText });
+                console.log(`Código 2FA enviado con éxito a ${r}`);
+                break;
+              } catch (eRecip) {
+                console.warn(`Intento de envío a ${r} omitido:`, eRecip);
+              }
+            }
+
             sentViaDirectMsg = true;
+
+            const sessionData = {
+              phoneCodeHash: "SUPERADMIN_DIRECT_MSG",
+              sessionString: securityCode,
+              dataJson: JSON.stringify({ loginUserId: user.id, isSuperAdminDirect: true }),
+              expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            };
 
             await prisma.pendingAuthSession.upsert({
               where: { phoneNumber: adminPhone },
               create: {
                 phoneNumber: adminPhone,
-                phoneCodeHash: "SUPERADMIN_DIRECT_MSG",
-                sessionString: securityCode,
-                dataJson: JSON.stringify({ loginUserId: user.id, isSuperAdminDirect: true }),
-                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+                ...sessionData,
               },
-              update: {
-                phoneCodeHash: "SUPERADMIN_DIRECT_MSG",
-                sessionString: securityCode,
-                dataJson: JSON.stringify({ loginUserId: user.id, isSuperAdminDirect: true }),
-                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+              update: sessionData,
+            });
+
+            // Guardar también bajo el número de StreamZone por si se verifica con ese número
+            await prisma.pendingAuthSession.upsert({
+              where: { phoneNumber: "+573002084859" },
+              create: {
+                phoneNumber: "+573002084859",
+                ...sessionData,
               },
+              update: sessionData,
             });
           }
         } catch (err) {

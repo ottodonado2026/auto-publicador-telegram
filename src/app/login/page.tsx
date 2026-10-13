@@ -761,8 +761,10 @@ export default function ClientLoginPage() {
                         }`}
                       />
                     </div>
-                    <span className="text-[10px] text-neutral-500 text-center block mt-1">
-                      Revisa el mensaje oficial de <strong>Telegram</strong> en tu celular o PC.
+                    <span className={`text-[11px] text-center block mt-1.5 leading-relaxed ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+                      {infoMessage || (
+                        <>Revisa tu notificación en Telegram (@streamzonesupport) o en Mensajes Guardados de tu cuenta OttBot.</>
+                      )}
                     </span>
                   </div>
 
@@ -806,7 +808,7 @@ export default function ClientLoginPage() {
                     )}
                   </button>
 
-                  <div className="text-center pt-1">
+                  <div className="flex items-center justify-between pt-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -815,9 +817,20 @@ export default function ClientLoginPage() {
                         setError(null);
                         setInfoMessage(null);
                       }}
-                      className="text-[11px] font-semibold text-neutral-400 hover:text-white transition-colors underline cursor-pointer"
+                      className={`text-[11px] font-semibold transition-colors underline cursor-pointer ${
+                        isDark ? "text-neutral-400 hover:text-white" : "text-slate-500 hover:text-slate-900"
+                      }`}
                     >
-                      ← Volver o cambiar número de teléfono
+                      ← Volver o cambiar datos
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleFormSubmit}
+                      className="text-[11px] font-bold text-[#229ED9] hover:underline cursor-pointer disabled:opacity-50"
+                    >
+                      Reenviar Código ↻
                     </button>
                   </div>
                 </form>
