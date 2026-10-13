@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Send, PlusCircle, 
-  CreditCard, LogOut, Clock, Sun, Moon
+  CreditCard, LogOut, Clock, Sun, Moon, BookOpen
 } from "lucide-react";
 
 interface ClientSidebarProps {
@@ -29,6 +29,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
     { name: "Crear Nuevo Copy", href: "/dashboard/campaigns", icon: PlusCircle },
     { name: "Vincular mi Telegram", href: "/dashboard/telegram", icon: Send },
     { name: "Recargar Membresía", href: "/dashboard/plans", icon: CreditCard },
+    { name: "Instrucciones de Uso", href: "/dashboard/guide", icon: BookOpen },
   ];
 
   const hasAccess = membership?.hasAccess;

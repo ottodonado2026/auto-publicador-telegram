@@ -36,6 +36,8 @@ export default function ClientCampaignsPage() {
   const [activeTab, setActiveTab] = useState<"CREATE" | "LIBRARY">("CREATE");
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [savedCampaigns, setSavedCampaigns] = useState<any[]>([]);
+  const [libraryPage, setLibraryPage] = useState(1);
+  const copiesPerPage = 12;
 
   // Campos del Copy
   const [name, setName] = useState("");
@@ -303,9 +305,9 @@ export default function ClientCampaignsPage() {
           </div>
         )}
 
-        {/* PESTAÑA 2: BIBLIOTECA DE COPYS GUARDADOS */}
+        {/* PESTAÑA 2: BIBLIOTECA DE COPYS GUARDADOS EN 3 COLUMNAS CON PAGINACIÓN */}
         {activeTab === "LIBRARY" && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {savedCampaigns.length === 0 ? (
               <div className={`p-12 rounded-3xl border text-center ${
                 isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
@@ -317,44 +319,89 @@ export default function ClientCampaignsPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {savedCampaigns.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`p-5 rounded-3xl border shadow-md flex flex-col justify-between ${
-                      isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-sm font-black truncate">{c.name}</h3>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          c.status === "ACTIVE" ? "bg-emerald-500/20 text-emerald-400" : "bg-neutral-700 text-neutral-300"
-                        }`}>
-                          {c.status}
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-400 mb-3 font-mono line-clamp-3">
-                        {c.messageContent}
-                      </p>
-                      <div className="text-[11px] text-neutral-500 flex items-center gap-2">
-                        <span>Grupos: {Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 0}</span>
-                        <span>•</span>
-                        <span>Cada {c.intervalMinutes} min</span>
-                      </div>
-                    </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {savedCampaigns
+                    .slice((libraryPage - 1) * copiesPerPage, libraryPage * copiesPerPage)
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        className={`p-5 rounded-3xl border shadow-md flex flex-col justify-between ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-black truncate">{c.name}</h3>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              c.status === "ACTIVE" ? "bg-emerald-500/20 text-emerald-400" : "bg-neutral-700 text-neutral-300"
+                            }`}>
+                              {c.status}
+                            </span>
+                          </div>
 
-                    <button
-                      type="button"
-                      onClick={() => loadExistingCopy(c)}
-                      className="mt-4 w-full py-2 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Cargar este Copy en el Editor</span>
-                    </button>
+                          {/* Vista previa con saltos de línea preservados */}
+                          <div className={`p-3 rounded-2xl border text-xs font-sans whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto mb-3 ${
+                            isDark ? "bg-[#171A20] border-[#2D3340] text-neutral-300" : "bg-neutral-50 border-neutral-200 text-neutral-700"
+                          }`}>
+                            {c.messageContent}
+                          </div>
+
+                          <div className="text-[11px] text-neutral-500 flex items-center justify-between">
+                            <span>Grupos: {Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 0}</span>
+                            <span>Cada {c.intervalMinutes} min</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => loadExistingCopy(c)}
+                          className="mt-4 w-full py-2 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Cargar en el Editor</span>
+                        </button>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Controles de Paginación (12 items por página) */}
+                {Math.ceil(savedCampaigns.length / copiesPerPage) > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-[#2D3340]/50">
+                    <span className="text-xs text-neutral-400 font-medium">
+                      Mostrando {(libraryPage - 1) * copiesPerPage + 1} - {Math.min(libraryPage * copiesPerPage, savedCampaigns.length)} de {savedCampaigns.length} copys
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={libraryPage === 1}
+                        onClick={() => setLibraryPage(libraryPage - 1)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
+                        }`}
+                      >
+                        ← Anterior
+                      </button>
+
+                      <span className="text-xs font-black px-2 text-[#229ED9]">
+                        Página {libraryPage} de {Math.ceil(savedCampaigns.length / copiesPerPage)}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={libraryPage >= Math.ceil(savedCampaigns.length / copiesPerPage)}
+                        onClick={() => setLibraryPage(libraryPage + 1)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
+                        }`}
+                      >
+                        Siguiente →
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}

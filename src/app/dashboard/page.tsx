@@ -21,6 +21,8 @@ export default function ClientDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [broadcastingId, setBroadcastingId] = useState<string | null>(null);
   const [broadcastFeedback, setBroadcastFeedback] = useState<{ id: string; message: string; isError?: boolean } | null>(null);
+  const [campaignPage, setCampaignPage] = useState(1);
+  const campaignsPerPage = 12;
 
   const fetchDashboard = async () => {
     try {
@@ -272,7 +274,9 @@ export default function ClientDashboard() {
               </div>
             ) : (
               <div className="space-y-5">
-                {campaigns.map((c: any) => {
+                {campaigns
+                  .slice((campaignPage - 1) * campaignsPerPage, campaignPage * campaignsPerPage)
+                  .map((c: any) => {
                   const targetCount = Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 1;
                   const sentCount = c._count?.logs || 0;
                   const progressPercent = Math.min(100, Math.round((sentCount / Math.max(1, targetCount * 5)) * 100));
@@ -440,6 +444,43 @@ export default function ClientDashboard() {
                     </div>
                   );
                 })}
+
+                {/* Controles de Paginación de Campañas (12 por página) */}
+                {Math.ceil(campaigns.length / campaignsPerPage) > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-[#2D3340]/50">
+                    <span className="text-xs text-neutral-400 font-medium">
+                      Mostrando {(campaignPage - 1) * campaignsPerPage + 1} - {Math.min(campaignPage * campaignsPerPage, campaigns.length)} de {campaigns.length} campañas
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={campaignPage === 1}
+                        onClick={() => setCampaignPage(campaignPage - 1)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
+                        }`}
+                      >
+                        ← Anterior
+                      </button>
+
+                      <span className="text-xs font-black px-2 text-[#229ED9]">
+                        Página {campaignPage} de {Math.ceil(campaigns.length / campaignsPerPage)}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={campaignPage >= Math.ceil(campaigns.length / campaignsPerPage)}
+                        onClick={() => setCampaignPage(campaignPage + 1)}
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
+                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
+                        }`}
+                      >
+                        Siguiente →
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>
