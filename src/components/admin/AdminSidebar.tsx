@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Users, Send, CreditCard, 
-  BookOpen, LogOut, Radio, Sun, Moon
+  BookOpen, LogOut, Radio, Sun, Moon, ExternalLink
 } from "lucide-react";
 
 const navigation = [
@@ -14,6 +14,7 @@ const navigation = [
   { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
   { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
+  { name: "Ver Portal Cliente", href: "/dashboard", icon: ExternalLink },
 ];
 
 export default function AdminSidebar() {
