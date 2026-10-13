@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import {
   Wallet, Hash, CheckCircle2, AlertCircle, RefreshCw, Search,
-  Copy, Check, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight
+  Copy, Check, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
 export default function AdminWalletRechargePage() {
@@ -49,7 +49,10 @@ export default function AdminWalletRechargePage() {
     fetchWalletData();
   }, []);
 
-  const handleRechargeByCode = async (e: React.FormEvent) => {
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [pendingRechargeData, setPendingRechargeData] = useState<{ code: string; amount: number } | null>(null);
+
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     setRechargeMsg(null);
     const code = botCodeInput.trim().toUpperCase();
@@ -64,6 +67,14 @@ export default function AdminWalletRechargePage() {
       return;
     }
 
+    setPendingRechargeData({ code, amount: numAmount });
+    setConfirmModalOpen(true);
+  };
+
+  const handleExecuteRecharge = async () => {
+    if (!pendingRechargeData) return;
+    const { code, amount } = pendingRechargeData;
+
     try {
       setRecharging(true);
       const res = await fetch("/api/admin/users", {
@@ -71,7 +82,7 @@ export default function AdminWalletRechargePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           botCode: code,
-          walletCreditUSD: numAmount,
+          walletCreditUSD: amount,
         }),
       });
       const data = await res.json();
@@ -82,16 +93,19 @@ export default function AdminWalletRechargePage() {
       const u = data.user;
       setRechargeMsg({
         type: "ok",
-        text: `¡Recarga exitosa! +$${numAmount.toFixed(2)} USD acreditados a ${
+        text: `¡Recarga exitosa! +$${amount.toFixed(2)} USD acreditados a ${
           u?.storeName || u?.name || u?.email
         } (${u?.botCode}). Nuevo saldo disponible en su Wallet: $${Number(
           u?.walletBalance || 0
         ).toFixed(2)} USD.`,
       });
       setBotCodeInput("");
+      setConfirmModalOpen(false);
+      setPendingRechargeData(null);
       fetchWalletData();
     } catch (err: any) {
       setRechargeMsg({ type: "err", text: err.message || "Error al acreditar saldo" });
+      setConfirmModalOpen(false);
     } finally {
       setRecharging(false);
     }
@@ -140,7 +154,7 @@ export default function AdminWalletRechargePage() {
         className={`mb-8 rounded-3xl p-6 sm:p-8 border-2 shadow-xl ${
           isDark
             ? "bg-[#1B1F27] border-emerald-500/40"
-            : "bg-[#F4F6F9] border-emerald-500/40"
+            : "bg-white border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.06)]"
         }`}
       >
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-center">
@@ -157,9 +171,10 @@ export default function AdminWalletRechargePage() {
             </p>
           </div>
 
-          <form onSubmit={handleRechargeByCode} className="xl:col-span-7 space-y-3">
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
-              <div className="relative flex-shrink-0 w-full sm:w-52">
+          <form onSubmit={handleOpenConfirm} className="xl:col-span-7 space-y-3.5">
+            {/* Campos alineados en un grid exacto de misma altura (h-12) */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="relative sm:col-span-5">
                 <Hash className="w-4 h-4 text-[#229ED9] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -167,15 +182,15 @@ export default function AdminWalletRechargePage() {
                   placeholder="Ej: BOT-I129849"
                   value={botCodeInput}
                   onChange={(e) => setBotCodeInput(e.target.value.toUpperCase())}
-                  className={`w-full pl-9 pr-3 py-3 rounded-xl border text-xs font-mono font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 ${
+                  className={`w-full h-12 pl-10 pr-3 rounded-xl border text-xs font-mono font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 ${
                     isDark
                       ? "bg-[#13161C] border-[#2D3340] text-white placeholder:text-neutral-500"
-                      : "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400"
+                      : "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-xs"
                   }`}
                 />
               </div>
 
-              <div className="relative flex-shrink-0 w-full sm:w-36">
+              <div className="relative sm:col-span-3">
                 <span className="text-xs font-black text-emerald-500 absolute left-3.5 top-1/2 -translate-y-1/2">
                   $
                 </span>
@@ -184,31 +199,35 @@ export default function AdminWalletRechargePage() {
                   step="0.01"
                   min="0.50"
                   required
-                  placeholder="Monto USD"
+                  placeholder="Monto"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  className={`w-full pl-7 pr-10 py-3 rounded-xl border text-xs font-mono font-black focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
+                  className={`w-full h-12 pl-7 pr-10 rounded-xl border text-xs font-mono font-black focus:outline-none focus:ring-2 focus:ring-emerald-500/30 ${
                     isDark
                       ? "bg-[#13161C] border-[#2D3340] text-white"
-                      : "bg-white border-slate-300 text-slate-900"
+                      : "bg-white border-slate-300 text-slate-900 shadow-xs"
                   }`}
                 />
-                <span className="text-[10px] font-bold text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2">
+                <span className={`text-[10px] font-bold absolute right-3 top-1/2 -translate-y-1/2 ${
+                  isDark ? "text-neutral-400" : "text-slate-600"
+                }`}>
                   USD
                 </span>
               </div>
 
-              <button
-                type="submit"
-                disabled={recharging}
-                className="flex-shrink-0 py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
-              >
-                {recharging ? "Acreditando..." : "⚡ Acreditar Saldo Ahora"}
-              </button>
+              <div className="sm:col-span-4">
+                <button
+                  type="submit"
+                  disabled={recharging}
+                  className="w-full h-12 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap flex items-center justify-center gap-1.5"
+                >
+                  {recharging ? "Acreditando..." : "⚡ Acreditar Saldo Ahora"}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className={`text-[10px] font-bold mr-1 ${isDark ? "text-neutral-400" : "text-slate-500"}`}>
+              <span className={`text-[10px] font-bold mr-1 ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
                 Montos de planes:
               </span>
               {[
@@ -224,10 +243,10 @@ export default function AdminWalletRechargePage() {
                   onClick={() => setAmountInput(preset.val)}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
                     amountInput === preset.val
-                      ? "bg-emerald-600 text-white border-emerald-600"
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                       : isDark
                       ? "bg-[#13161C] text-neutral-300 border-[#2D3340] hover:border-emerald-500/40"
-                      : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                      : "bg-white text-slate-800 border-slate-300 hover:bg-slate-100 shadow-xs"
                   }`}
                 >
                   {preset.label}
@@ -444,6 +463,82 @@ export default function AdminWalletRechargePage() {
           </div>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN ELEGANTE */}
+      {confirmModalOpen && pendingRechargeData && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl relative ${
+              isDark
+                ? "bg-[#1B1F27] border-[#2D3340] text-white"
+                : "bg-white border-slate-300 text-slate-950 shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className={`text-base sm:text-lg font-black ${isDark ? "text-white" : "text-slate-950"}`}>
+                    Confirmar Acreditación de Saldo
+                  </h3>
+                  <p className={`text-xs ${isDark ? "text-neutral-400" : "text-slate-600 font-medium"}`}>
+                    Verifica antes de aplicar el crédito
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className="p-1.5 rounded-xl bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div
+              className={`p-4 rounded-2xl border mb-5 text-center space-y-2 ${
+                isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-slate-50 border-slate-300"
+              }`}
+            >
+              <div className={`text-xs font-bold ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                ¿Estás seguro de acreditar este saldo?
+              </div>
+              <div className="text-3xl font-black font-mono text-emerald-500">
+                +${pendingRechargeData.amount.toFixed(2)} USD
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9] font-mono font-black text-xs">
+                <span>Código: {pendingRechargeData.code}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmModalOpen(false)}
+                className={`flex-1 py-2.5 px-4 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                  isDark
+                    ? "bg-[#13161C] border-[#2D3340] text-neutral-300 hover:text-white"
+                    : "bg-slate-100 border-slate-300 text-slate-800 hover:bg-slate-200"
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={recharging}
+                onClick={handleExecuteRecharge}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{recharging ? "Acreditando..." : "Sí, Acreditar Ahora"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -52,7 +52,7 @@ export default function AdminCampaignsPage() {
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 15;
 
   const fetchClients = useCallback(async () => {
     try {
@@ -197,40 +197,77 @@ export default function AdminCampaignsPage() {
 
           return (
             <div key={client.id} className={`rounded-3xl border shadow-sm overflow-hidden transition-all ${cardBg}`}>
-              {/* Fila del Cliente */}
+              {/* Fila del Cliente Equilibrada en Grid */}
               <button
                 onClick={() => handleToggleClient(client.id)}
-                className={`w-full px-5 py-4 flex flex-wrap items-center justify-between gap-4 text-left transition-colors cursor-pointer ${
-                  isExpanded ? isDark ? "bg-[#229ED9]/10" : "bg-sky-50/70" : ""
+                className={`w-full px-5 py-4 text-left transition-colors cursor-pointer ${
+                  isExpanded ? (isDark ? "bg-[#229ED9]/10" : "bg-sky-50/70") : isDark ? "hover:bg-[#1E232E]" : "hover:bg-slate-50"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
-                    isActive ? "bg-emerald-500/20 text-emerald-400" : isDark ? "bg-[#13161C] text-neutral-400" : "bg-slate-200 text-slate-500"
-                  }`}>
-                    {isActive ? <Activity className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <div className={`font-black text-sm ${isDark ? "text-white" : "text-slate-900"}`}>
-                      {client.storeName || client.name || "Sin nombre"}
+                <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
+                  {/* Col 1: Info Cliente */}
+                  <div className="md:col-span-5 flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0 ${
+                      isActive ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : isDark ? "bg-[#13161C] text-neutral-400 border border-[#2D3340]" : "bg-slate-100 text-slate-500 border border-slate-200"
+                    }`}>
+                      {isActive ? <Activity className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
                     </div>
-                    <div className={`font-mono text-[11px] ${isDark ? "text-neutral-400" : "text-slate-500"}`}>
-                      {client.botCode || "N/A"} • {client.email}
+                    <div className="min-w-0">
+                      <div className={`font-black text-sm truncate ${isDark ? "text-white" : "text-slate-950"}`}>
+                        {client.storeName || client.name || "Sin nombre"}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {client.botCode && (
+                          <span className="font-mono font-black text-[11px] text-[#229ED9] bg-[#229ED9]/10 px-1.5 py-0.5 rounded">
+                            {client.botCode}
+                          </span>
+                        )}
+                        <span className={`text-[11px] truncate ${isDark ? "text-neutral-400" : "text-slate-600 font-medium"}`}>
+                          {client.email}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${isActive ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-red-500/15 text-red-400 border-red-500/30"}`}>
-                    {isActive ? `${daysLeft}d activo` : "Expirado"}
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${isDark ? "bg-[#229ED9]/15 text-[#229ED9] border-[#229ED9]/30" : "bg-sky-100 text-sky-700 border-sky-300"}`}>
-                    {client._count.campaigns} campañas
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${isDark ? "bg-purple-500/15 text-purple-400 border-purple-500/30" : "bg-purple-100 text-purple-700 border-purple-300"}`}>
-                    {client._count.telegramAccounts} TG
-                  </span>
-                  <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""} ${isDark ? "text-neutral-400" : "text-slate-400"}`} />
+                  {/* Col 2: Estado Membresía */}
+                  <div className="md:col-span-3 flex items-center md:justify-center">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border ${
+                      isActive
+                        ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+                        : "bg-red-500/15 text-red-500 border-red-500/30"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+                      {isActive ? `${daysLeft}d activo` : "Membresía Expirada"}
+                    </span>
+                  </div>
+
+                  {/* Col 3: Métricas de Campañas y Telegram */}
+                  <div className="md:col-span-2 flex items-center md:justify-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                      isDark ? "bg-[#229ED9]/15 text-[#229ED9] border-[#229ED9]/30" : "bg-sky-50 text-sky-800 border-sky-300"
+                    }`}>
+                      {client._count.campaigns} campañas
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-black border ${
+                      isDark ? "bg-purple-500/15 text-purple-400 border-purple-500/30" : "bg-purple-50 text-purple-800 border-purple-300"
+                    }`}>
+                      {client._count.telegramAccounts} TG
+                    </span>
+                  </div>
+
+                  {/* Col 4: Botón de Despliegue */}
+                  <div className="md:col-span-2 flex items-center justify-end gap-2">
+                    <span className={`text-xs font-black ${isDark ? "text-neutral-300" : "text-slate-700"}`}>
+                      {isExpanded ? "Ocultar" : "Ver Campañas"}
+                    </span>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                      isExpanded
+                        ? "bg-[#229ED9] text-white rotate-90"
+                        : isDark ? "bg-[#13161C] text-neutral-400" : "bg-slate-100 text-slate-600"
+                    }`}>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
                 </div>
               </button>
 
@@ -348,7 +385,7 @@ export default function AdminCampaignsPage() {
       {/* Paginación */}
       {totalPages > 1 && (
         <div className={`mt-6 flex items-center justify-between text-xs font-bold ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
-          <span>Página {currentPage} de {totalPages} ({filtered.length} clientes — 10 por página)</span>
+          <span>Página {currentPage} de {totalPages} ({filtered.length} clientes — 15 por página)</span>
           <div className="flex items-center gap-2">
             <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               className={`px-3.5 py-1.5 rounded-xl border flex items-center gap-1 cursor-pointer disabled:opacity-40 ${isDark ? "bg-[#1B1F27] border-[#2D3340] text-white" : "bg-white border-slate-300 text-slate-800"}`}>

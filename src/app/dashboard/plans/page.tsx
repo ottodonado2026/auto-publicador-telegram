@@ -448,23 +448,31 @@ export default function ClientPlansPage() {
                   <Wallet className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider block ${
+                    isDark ? "text-slate-400" : "text-slate-600 font-bold"
+                  }`}>
                     Saldo Disponible en Wallet
                   </span>
                   <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-3xl font-bold font-mono tracking-tight">
+                    <span className={`text-3xl font-black font-mono tracking-tight ${
+                      isDark ? "text-white" : "text-slate-950"
+                    }`}>
                       ${walletBalance.toFixed(2)}
                     </span>
-                    <span className="text-xs font-medium text-slate-400">USD</span>
+                    <span className={`text-xs font-bold ${isDark ? "text-slate-400" : "text-slate-600"}`}>USD</span>
                   </div>
-                  <div className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-slate-500/10 border border-slate-500/20 text-[11px] font-mono text-slate-300">
+                  <div className={`mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-mono font-black ${
+                    isDark
+                      ? "bg-[#0284C7]/15 border-[#0284C7]/30 text-[#38BDF8]"
+                      : "bg-sky-50 border-sky-300 text-sky-950 shadow-xs"
+                  }`}>
                     <span>Código ID: {sessionUser?.botCode || "BOT-I------"}</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col items-start sm:items-end gap-1.5">
-                <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                <span className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
                   Monto a recargar (Mínimo $1.50 USD):
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -473,12 +481,12 @@ export default function ClientPlansPage() {
                       key={amt}
                       type="button"
                       onClick={() => selectPresetAmount(amt)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                      className={`px-3 py-1 rounded-lg text-xs font-mono font-black transition-all cursor-pointer border ${
                         topupAmount === amt && !isAmountBelowMin
-                          ? "bg-[#FCD535] text-[#1E2329] border-[#FCD535]"
+                          ? "bg-[#FCD535] text-[#1E2329] border-[#FCD535] shadow-sm ring-1 ring-[#FCD535]"
                           : isDark
-                          ? "bg-[#1C222E] text-slate-300 border-[#2D3648] hover:border-slate-500"
-                          : "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200"
+                          ? "bg-[#1C222E] text-slate-200 border-[#2D3648] hover:border-slate-500"
+                          : "bg-white text-slate-900 border-slate-300 hover:bg-slate-100 shadow-xs"
                       }`}
                     >
                       +${amt.toFixed(2)}
@@ -488,9 +496,11 @@ export default function ClientPlansPage() {
 
                 {/* Campo Libre en Dólares (USD / USDT) */}
                 <div className="flex items-center gap-1.5 mt-1">
-                  <span className="text-[11px] text-slate-400 font-medium">Otro valor:</span>
+                  <span className={`text-[11px] font-bold ${isDark ? "text-slate-400" : "text-slate-700"}`}>Otro valor:</span>
                   <div className="relative">
-                    <span className="text-xs font-mono font-semibold text-[#FCD535] absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className={`text-xs font-mono font-black absolute left-2.5 top-1/2 -translate-y-1/2 ${
+                      isDark ? "text-[#FCD535]" : "text-slate-950"
+                    }`}>
                       $
                     </span>
                     <input
@@ -500,30 +510,30 @@ export default function ClientPlansPage() {
                       placeholder="1.50"
                       value={customAmountStr}
                       onChange={(e) => handleCustomAmountInput(e.target.value)}
-                      className={`w-24 pl-5 pr-2 py-1 rounded-lg text-xs font-mono font-bold border focus:outline-none focus:border-[#FCD535] ${
+                      className={`w-24 pl-5 pr-2 py-1 rounded-lg text-xs font-mono font-black border focus:outline-none focus:border-[#FCD535] ${
                         isAmountBelowMin
-                          ? "border-red-500 bg-red-500/10 text-red-400"
+                          ? "border-red-500 bg-red-500/10 text-red-500"
                           : isDark
                           ? "bg-[#10141B] border-[#2D3648] text-white"
-                          : "bg-slate-50 border-slate-300 text-slate-900"
+                          : "bg-white border-slate-300 text-slate-950 shadow-xs"
                       }`}
                     />
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400">USD</span>
+                  <span className={`text-[11px] font-mono font-bold ${isDark ? "text-slate-400" : "text-slate-700"}`}>USD</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className={`text-xs leading-relaxed max-w-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                Envía <strong className="font-mono text-[#FCD535]">${(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2)} USDT</strong> a nuestro Binance UID <strong className="font-mono text-slate-200">{BINANCE_UID}</strong> (<strong className="text-emerald-400">{BINANCE_USERNAME}</strong>) y acredita tu saldo en segundos.
+              <div className={`text-xs leading-relaxed max-w-sm ${isDark ? "text-slate-400" : "text-slate-700 font-medium"}`}>
+                Envía <strong className={`font-mono font-black ${isDark ? "text-[#FCD535]" : "text-slate-950 underline decoration-[#FCD535] decoration-2"}`}>${(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2)} USDT</strong> a nuestro Binance UID <strong className={`font-mono font-black ${isDark ? "text-slate-100" : "text-slate-950"}`}>{BINANCE_UID}</strong> (<strong className={isDark ? "text-emerald-400" : "text-emerald-700 font-bold"}>{BINANCE_USERNAME}</strong>) y acredita tu saldo en segundos.
               </div>
 
               <button
                 type="button"
                 disabled={isAmountBelowMin}
                 onClick={() => openBinanceModalForWallet(topupAmount)}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-semibold rounded-xl transition-colors whitespace-nowrap cursor-pointer disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-black rounded-xl transition-all shadow-md whitespace-nowrap cursor-pointer disabled:opacity-40"
               >
                 <BinanceIcon className="w-4 h-4 text-[#1E2329]" />
                 <span>Recargar ${(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2)} con Binance Pay</span>
@@ -671,19 +681,19 @@ export default function ClientPlansPage() {
                       </div>
                     </div>
 
-                    <div className={`text-right text-[11px] space-y-0.5 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                      <div>Máx. <strong className="text-slate-200">{plan.maxGroups} grupos</strong></div>
-                      <div><strong className="text-slate-200">{plan.maxDailyPosts} envíos</strong> / día</div>
-                      <div>Hasta <strong className="text-slate-200">{plan.maxCampaigns} campañas</strong></div>
-                      <div><strong className="text-slate-200">{plan.maxTelegramAccounts} cuenta(s)</strong> TG</div>
+                    <div className={`text-right text-[11px] space-y-0.5 ${isDark ? "text-slate-400" : "text-slate-600 font-medium"}`}>
+                      <div>Máx. <strong className={isDark ? "text-slate-200" : "text-slate-950 font-black"}>{plan.maxGroups} grupos</strong></div>
+                      <div><strong className={isDark ? "text-slate-200" : "text-slate-950 font-black"}>{plan.maxDailyPosts} envíos</strong> / día</div>
+                      <div>Hasta <strong className={isDark ? "text-slate-200" : "text-slate-950 font-black"}>{plan.maxCampaigns} campañas</strong></div>
+                      <div><strong className={isDark ? "text-slate-200" : "text-slate-950 font-black"}>{plan.maxTelegramAccounts} cuenta(s)</strong> TG</div>
                     </div>
                   </div>
 
                   <div className="space-y-2 mb-5">
                     {plan.features.map((f, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                        <span className={isDark ? "text-slate-300" : "text-slate-700"}>{f}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <span className={isDark ? "text-slate-300" : "text-slate-900 font-semibold"}>{f}</span>
                       </div>
                     ))}
                   </div>
@@ -778,19 +788,21 @@ export default function ClientPlansPage() {
               {(binanceStep === "STEP_1_SEND" || binanceStep === "STEP_2_VERIFY") && (
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#FCD535] text-[#1E2329] flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#FCD535] text-[#1E2329] flex items-center justify-center flex-shrink-0 shadow-xs">
                       <BinanceIcon className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-base sm:text-lg font-bold">
+                        <h2 className={`text-base sm:text-lg font-black ${isDark ? "text-white" : "text-slate-950"}`}>
                           Binance Pay • Pago en USDT
                         </h2>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#FCD535]/15 text-[#FCD535] border border-[#FCD535]/30">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                          isDark ? "bg-[#FCD535]/15 text-[#FCD535] border-[#FCD535]/30" : "bg-amber-100 text-amber-950 border-amber-300 font-extrabold"
+                        }`}>
                           {binanceStep === "STEP_1_SEND" ? "Paso 1 de 2" : "Paso 2 de 2"}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400">
+                      <p className={`text-xs ${isDark ? "text-slate-400" : "text-slate-600 font-medium"}`}>
                         Acreditación automática verificando tu Order ID
                       </p>
                     </div>
@@ -811,7 +823,7 @@ export default function ClientPlansPage() {
                 <div className="space-y-4">
                   {/* Selector de Modalidad (Recargar Wallet vs Activar Plan Directo) */}
                   <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl border ${
-                    isDark ? "bg-[#0F1319] border-[#222A38]" : "bg-slate-100 border-slate-200"
+                    isDark ? "bg-[#0F1319] border-[#222A38]" : "bg-slate-100 border-slate-300"
                   }`}>
                     <button
                       type="button"
@@ -819,10 +831,12 @@ export default function ClientPlansPage() {
                         setBinanceMode("WALLET");
                         setBinanceError(null);
                       }}
-                      className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
                         binanceMode === "WALLET"
-                          ? "bg-[#FCD535] text-[#1E2329]"
-                          : "text-slate-400 hover:text-white"
+                          ? "bg-[#FCD535] text-[#1E2329] shadow-xs"
+                          : isDark
+                          ? "text-slate-400 hover:text-white"
+                          : "text-slate-600 hover:text-slate-950"
                       }`}
                     >
                       Recargar mi Wallet
@@ -833,10 +847,12 @@ export default function ClientPlansPage() {
                         setBinanceMode("PLAN");
                         setBinanceError(null);
                       }}
-                      className={`py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
                         binanceMode === "PLAN"
-                          ? "bg-[#FCD535] text-[#1E2329]"
-                          : "text-slate-400 hover:text-white"
+                          ? "bg-[#FCD535] text-[#1E2329] shadow-xs"
+                          : isDark
+                          ? "text-slate-400 hover:text-white"
+                          : "text-slate-600 hover:text-slate-950"
                       }`}
                     >
                       Activar Plan Directo
@@ -847,11 +863,11 @@ export default function ClientPlansPage() {
                   {binanceMode === "WALLET" ? (
                     <div className="space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="block text-[11px] font-semibold text-slate-400">
+                        <span className={`block text-[11px] font-bold ${isDark ? "text-slate-400" : "text-slate-700"}`}>
                           Monto a recargar en tu Wallet (mínimo $1.50 USD):
                         </span>
                         {isAmountBelowMin && (
-                          <span className="text-[10px] text-red-400 font-semibold">
+                          <span className="text-[10px] text-red-500 font-black">
                             Mínimo $1.50 USD
                           </span>
                         )}
@@ -864,25 +880,41 @@ export default function ClientPlansPage() {
                             onClick={() => selectPresetAmount(item.value)}
                             className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
                               topupAmount === item.value && !isAmountBelowMin
-                                ? "bg-[#FCD535]/15 border-[#FCD535] text-[#FCD535]"
+                                ? isDark
+                                  ? "bg-[#FCD535]/15 border-[#FCD535] text-[#FCD535]"
+                                  : "bg-amber-50 border-[#F0B90B] text-slate-950 ring-2 ring-[#F0B90B] shadow-xs"
                                 : isDark
                                 ? "bg-[#10141B] border-[#222A38] text-slate-300 hover:border-slate-600"
-                                : "bg-slate-50 border-slate-300 text-slate-700"
+                                : "bg-white border-slate-300 text-slate-800 hover:bg-slate-50"
                             }`}
                           >
-                            <div className="text-xs font-bold font-mono">{item.label}</div>
-                            <div className="text-[10px] text-slate-400 truncate">{item.desc}</div>
+                            <div className={`text-xs font-mono font-black ${
+                              topupAmount === item.value && !isAmountBelowMin
+                                ? isDark ? "text-[#FCD535]" : "text-slate-950"
+                                : isDark ? "text-slate-200" : "text-slate-900"
+                            }`}>
+                              {item.label}
+                            </div>
+                            <div className={`text-[10px] font-bold truncate ${
+                              topupAmount === item.value && !isAmountBelowMin
+                                ? isDark ? "text-amber-300" : "text-amber-900"
+                                : isDark ? "text-slate-400" : "text-slate-600"
+                            }`}>
+                              {item.desc}
+                            </div>
                           </button>
                         ))}
                       </div>
 
                       {/* Campo libre para que el usuario ingrese el monto que desee (>= $1.50 USD) */}
                       <div className="flex items-center gap-2 pt-0.5">
-                        <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                        <span className={`text-[11px] font-bold whitespace-nowrap ${isDark ? "text-slate-400" : "text-slate-700"}`}>
                           O escribe otro valor:
                         </span>
                         <div className="relative flex-1">
-                          <span className="text-xs font-mono font-semibold text-[#FCD535] absolute left-3 top-1/2 -translate-y-1/2">
+                          <span className={`text-xs font-mono font-black absolute left-3 top-1/2 -translate-y-1/2 ${
+                            isDark ? "text-[#FCD535]" : "text-slate-950"
+                          }`}>
                             $
                           </span>
                           <input
@@ -892,15 +924,17 @@ export default function ClientPlansPage() {
                             placeholder="Ej: 15.00"
                             value={customAmountStr}
                             onChange={(e) => handleCustomAmountInput(e.target.value)}
-                            className={`w-full pl-7 pr-12 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-none focus:border-[#FCD535] ${
+                            className={`w-full pl-7 pr-12 py-1.5 rounded-xl text-xs font-mono font-black border focus:outline-none focus:border-[#FCD535] ${
                               isAmountBelowMin
-                                ? "border-red-500 bg-red-500/10 text-red-400"
+                                ? "border-red-500 bg-red-500/10 text-red-500"
                                 : isDark
                                 ? "bg-[#10141B] border-[#2D3648] text-white"
-                                : "bg-slate-50 border-slate-300 text-slate-900"
+                                : "bg-white border-slate-300 text-slate-950 shadow-xs"
                             }`}
                           />
-                          <span className="text-[10px] font-mono font-bold text-slate-400 absolute right-3 top-1/2 -translate-y-1/2">
+                          <span className={`text-[10px] font-mono font-bold absolute right-3 top-1/2 -translate-y-1/2 ${
+                            isDark ? "text-slate-400" : "text-slate-700"
+                          }`}>
                             USD
                           </span>
                         </div>
@@ -908,7 +942,7 @@ export default function ClientPlansPage() {
                     </div>
                   ) : (
                     <div>
-                      <span className="block text-[11px] font-semibold text-slate-400 mb-1.5">
+                      <span className={`block text-[11px] font-bold mb-1.5 ${isDark ? "text-slate-400" : "text-slate-700"}`}>
                         Elige el plan a activar con tu pago:
                       </span>
                       <div className="grid grid-cols-4 gap-2">
@@ -919,14 +953,26 @@ export default function ClientPlansPage() {
                             onClick={() => setBinancePlan(p)}
                             className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                               binancePlan?.id === p.id
-                                ? "bg-[#FCD535]/15 border-[#FCD535] text-[#FCD535]"
+                                ? isDark
+                                  ? "bg-[#FCD535]/15 border-[#FCD535] text-[#FCD535]"
+                                  : "bg-amber-50 border-[#F0B90B] text-slate-950 ring-2 ring-[#F0B90B] shadow-xs"
                                 : isDark
                                 ? "bg-[#10141B] border-[#222A38] text-slate-300 hover:border-slate-600"
-                                : "bg-slate-50 border-slate-300 text-slate-700"
+                                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                             }`}
                           >
-                            <div className="text-[11px] font-semibold">{p.shortName}</div>
-                            <div className="text-sm font-bold font-mono mt-0.5">
+                            <div className={`text-[11px] font-bold ${
+                              binancePlan?.id === p.id
+                                ? isDark ? "text-[#FCD535]" : "text-slate-950"
+                                : isDark ? "text-slate-300" : "text-slate-800"
+                            }`}>
+                              {p.shortName}
+                            </div>
+                            <div className={`text-sm font-black font-mono mt-0.5 ${
+                              binancePlan?.id === p.id
+                                ? isDark ? "text-[#FCD535]" : "text-slate-950"
+                                : isDark ? "text-slate-100" : "text-slate-900"
+                            }`}>
                               ${p.priceUSD.toFixed(2)}
                             </div>
                           </button>
@@ -937,11 +983,11 @@ export default function ClientPlansPage() {
 
                   {/* Datos exactos para copiar y pegar en Binance Pay */}
                   <div className={`p-4 rounded-xl border space-y-3 ${
-                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-200"
+                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-300"
                   }`}>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-medium">Moneda aceptada en Binance Pay:</span>
-                      <span className="font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded">
+                      <span className={`font-semibold ${isDark ? "text-slate-400" : "text-slate-700"}`}>Moneda aceptada en Binance Pay:</span>
+                      <span className="font-mono font-black text-emerald-500 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded">
                         Solo USDT
                       </span>
                     </div>
@@ -949,20 +995,26 @@ export default function ClientPlansPage() {
                     {/* Fila 1: UID Receptor + Usuario */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                        isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-white border-slate-200"
+                        isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-white border-slate-300 shadow-xs"
                       }`}>
                         <div>
-                          <span className="text-[10px] font-medium text-slate-400 block">
+                          <span className={`text-[10px] font-bold block ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                             Binance ID (UID)
                           </span>
-                          <span className="text-sm font-bold font-mono text-[#FCD535]">
+                          <span className={`text-base font-black font-mono tracking-wide ${
+                            isDark ? "text-[#FCD535]" : "text-slate-950"
+                          }`}>
                             {BINANCE_UID}
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(BINANCE_UID, "uid")}
-                          className="px-2.5 py-1.5 rounded-lg bg-[#FCD535]/15 hover:bg-[#FCD535]/25 text-[#FCD535] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 cursor-pointer transition-colors ${
+                            isDark
+                              ? "bg-[#FCD535]/15 hover:bg-[#FCD535]/25 text-[#FCD535]"
+                              : "bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300"
+                          }`}
                         >
                           {copiedField === "uid" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                           <span>{copiedField === "uid" ? "Copiado" : "Copiar"}</span>
@@ -970,17 +1022,19 @@ export default function ClientPlansPage() {
                       </div>
 
                       <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                        isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-white border-slate-200"
+                        isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-white border-slate-300 shadow-xs"
                       }`}>
                         <div>
-                          <span className="text-[10px] font-medium text-slate-400 block">
+                          <span className={`text-[10px] font-bold block ${isDark ? "text-slate-400" : "text-slate-600"}`}>
                             Usuario Receptor
                           </span>
-                          <span className="text-sm font-bold font-mono text-emerald-400">
+                          <span className={`text-base font-black font-mono ${
+                            isDark ? "text-emerald-400" : "text-emerald-700"
+                          }`}>
                             {BINANCE_USERNAME}
                           </span>
                         </div>
-                        <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-semibold">
+                        <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-500 text-[10px] font-bold">
                           ✓ Oficial
                         </span>
                       </div>
@@ -988,24 +1042,26 @@ export default function ClientPlansPage() {
 
                     {/* Fila 2: Monto Exacto a Enviar con Botón de Copiar Valor */}
                     <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                      isDark ? "bg-[#151A23] border-[#FCD535]/40" : "bg-white border-amber-400"
+                      isDark ? "bg-[#151A23] border-[#FCD535]/40" : "bg-white border-amber-400 ring-1 ring-amber-400/30 shadow-xs"
                     }`}>
                       <div>
-                        <span className="text-[10px] font-medium text-slate-400 block">
+                        <span className={`text-[10px] font-bold block ${isDark ? "text-slate-400" : "text-slate-700"}`}>
                           Valor exacto a enviar (no se permite enviar menos):
                         </span>
                         <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <span className="text-lg font-bold font-mono text-[#FCD535]">
+                          <span className={`text-2xl font-black font-mono ${
+                            isDark ? "text-[#FCD535]" : "text-slate-950"
+                          }`}>
                             {exactUSDTAmount}
                           </span>
-                          <span className="text-xs font-mono font-semibold text-slate-300">USDT</span>
+                          <span className={`text-xs font-mono font-black ${isDark ? "text-slate-300" : "text-slate-700"}`}>USDT</span>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => copyToClipboard(exactUSDTAmount, "amount")}
-                        className="px-3 py-1.5 rounded-lg bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                        className="px-3 py-2 rounded-xl bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer"
                       >
                         {copiedField === "amount" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copiedField === "amount" ? "¡Monto Copiado!" : `Copiar ${exactUSDTAmount}`}</span>
@@ -1021,7 +1077,7 @@ export default function ClientPlansPage() {
                       setBinanceError(null);
                       setBinanceStep("STEP_2_VERIFY");
                     }}
-                    className="w-full py-3 px-4 bg-[#FCD535] hover:bg-[#F0B90B] disabled:opacity-40 text-[#1E2329] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 px-4 bg-[#FCD535] hover:bg-[#F0B90B] disabled:opacity-40 text-[#1E2329] text-xs font-black rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Ya envié los {exactUSDTAmount} USDT → Ingresar mi Order ID</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1033,34 +1089,34 @@ export default function ClientPlansPage() {
               {binanceStep === "STEP_2_VERIFY" && (
                 <form onSubmit={handleVerifyBinancePayment} className="space-y-4">
                   <div className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
-                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-200"
+                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-300"
                   }`}>
                     <div>
-                      <span className="text-slate-400 block">Operación seleccionada:</span>
-                      <span className="font-semibold text-white">
+                      <span className={`block font-bold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Operación seleccionada:</span>
+                      <span className={`font-black ${isDark ? "text-white" : "text-slate-950"}`}>
                         {binanceMode === "PLAN"
                           ? `Activar ${binancePlan?.name}`
                           : "Recarga de Saldo en Wallet"}
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-400 block">Valor requerido:</span>
-                      <span className="font-mono font-bold text-[#FCD535]">{exactUSDTAmount} USDT</span>
+                      <span className={`block font-bold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Valor requerido:</span>
+                      <span className={`font-mono font-black text-base ${isDark ? "text-[#FCD535]" : "text-slate-950"}`}>{exactUSDTAmount} USDT</span>
                     </div>
                   </div>
 
                   <div className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
-                    isDark ? "bg-[#10141B] border-[#222A38] text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"
+                    isDark ? "bg-[#10141B] border-[#222A38] text-slate-300" : "bg-slate-50 border-slate-300 text-slate-800 font-medium"
                   }`}>
-                    <div className="font-semibold text-[#38BDF8]">
+                    <div className="font-bold text-[#38BDF8]">
                       ¿Dónde encuentro mi Order ID (ID de la Orden)?
                     </div>
-                    <p>1. En el comprobante de tu envío a <strong className="text-emerald-400">{BINANCE_USERNAME}</strong> ({BINANCE_UID}), busca el campo <strong>ID de la orden (Order ID)</strong>.</p>
-                    <p>2. Es un número de ~18 dígitos (ejemplo: <code className="font-mono text-[#FCD535]">459634021363236864</code>). Cópialo y pégalo abajo:</p>
+                    <p>1. En el comprobante de tu envío a <strong className={isDark ? "text-emerald-400" : "text-emerald-700 font-bold"}>{BINANCE_USERNAME}</strong> ({BINANCE_UID}), busca el campo <strong>ID de la orden (Order ID)</strong>.</p>
+                    <p>2. Es un número de ~18 dígitos (ejemplo: <code className={`font-mono font-black px-1.5 py-0.5 rounded ${isDark ? "text-[#FCD535] bg-[#FCD535]/15" : "text-slate-950 bg-slate-200"}`}>459634021363236864</code>). Cópialo y pégalo abajo:</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold mb-1.5">
+                    <label className={`block text-xs font-bold mb-1.5 ${isDark ? "text-slate-200" : "text-slate-800"}`}>
                       Order ID de tu pago en Binance Pay:
                     </label>
                     <input
@@ -1070,10 +1126,10 @@ export default function ClientPlansPage() {
                       placeholder="Pega aquí los 18 dígitos de tu Order ID"
                       value={binanceOrderId}
                       onChange={(e) => setBinanceOrderId(e.target.value)}
-                      className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono font-semibold focus:outline-none focus:border-[#FCD535] ${
+                      className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono font-black focus:outline-none focus:border-[#FCD535] ${
                         isDark
                           ? "bg-[#10141B] border-[#262F3F] text-white placeholder:text-slate-500"
-                          : "bg-slate-50 border-slate-300 text-slate-900"
+                          : "bg-white border-slate-300 text-slate-950 shadow-xs"
                       }`}
                     />
                   </div>
@@ -1128,14 +1184,16 @@ export default function ClientPlansPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FCD535]/15 text-[#FCD535] text-[11px] font-semibold">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold ${
+                      isDark ? "bg-[#FCD535]/15 text-[#FCD535]" : "bg-amber-100 text-amber-950 border border-amber-300"
+                    }`}>
                       <Loader2 className="w-3 h-3 animate-spin" /> Verificando con Binance Pay
                     </span>
-                    <h3 className="text-lg font-bold">
+                    <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-950"}`}>
                       Comprobando tu pago...
                     </h3>
-                    <p className={`text-xs max-w-sm mx-auto leading-relaxed ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                      Confirmando el Order ID <strong className="font-mono text-[#FCD535]">{binanceOrderId}</strong> en la cuenta <strong className="text-emerald-400">{BINANCE_USERNAME}</strong>.
+                    <p className={`text-xs max-w-sm mx-auto leading-relaxed ${isDark ? "text-slate-400" : "text-slate-700 font-medium"}`}>
+                      Confirmando el Order ID <strong className={`font-mono font-black ${isDark ? "text-[#FCD535]" : "text-slate-950"}`}>{binanceOrderId}</strong> en la cuenta <strong className={isDark ? "text-emerald-400" : "text-emerald-700 font-bold"}>{BINANCE_USERNAME}</strong>.
                     </p>
                   </div>
                 </div>
@@ -1144,47 +1202,47 @@ export default function ClientPlansPage() {
               {/* ANIMACIÓN DE ÉXITO */}
               {binanceStep === "SUCCESS" && binanceSuccessData && (
                 <div className="py-6 px-2 text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-9 h-9" />
                   </div>
 
                   <div className="space-y-1">
-                    <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold uppercase tracking-wider">
+                    <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-500 text-[10px] font-bold uppercase tracking-wider">
                       Operación Confirmada
                     </span>
-                    <h3 className="text-lg sm:text-xl font-bold text-emerald-400">
+                    <h3 className={`text-lg sm:text-xl font-black ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
                       {binanceSuccessData.title}
                     </h3>
-                    <p className={`text-xs max-w-md mx-auto leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                    <p className={`text-xs max-w-md mx-auto leading-relaxed ${isDark ? "text-slate-300" : "text-slate-700 font-medium"}`}>
                       {binanceSuccessData.subtitle}
                     </p>
                   </div>
 
                   <div className={`p-3.5 rounded-xl border text-left text-xs space-y-2 max-w-md mx-auto ${
-                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-200"
+                    isDark ? "bg-[#10141B] border-[#222A38]" : "bg-slate-50 border-slate-300"
                   }`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Order ID Verificado:</span>
-                      <span className="font-mono font-semibold text-[#FCD535]">{binanceSuccessData.orderId}</span>
+                      <span className={`font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Order ID Verificado:</span>
+                      <span className={`font-mono font-black ${isDark ? "text-[#FCD535]" : "text-slate-950"}`}>{binanceSuccessData.orderId}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Monto Confirmado:</span>
-                      <span className="font-mono font-semibold text-emerald-400">
+                      <span className={`font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Monto Confirmado:</span>
+                      <span className={`font-mono font-black ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
                         +${binanceSuccessData.amountPaid.toFixed(2)} {binanceSuccessData.currency}
                       </span>
                     </div>
                     {binanceSuccessData.mode === "PLAN" && binanceSuccessData.planName && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Plan Activado:</span>
-                        <span className="font-semibold text-[#38BDF8]">
+                        <span className={`font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Plan Activado:</span>
+                        <span className={`font-bold ${isDark ? "text-[#38BDF8]" : "text-sky-700"}`}>
                           {binanceSuccessData.planName} (+{binanceSuccessData.daysAdded} días)
                         </span>
                       </div>
                     )}
                     {binanceSuccessData.mode === "WALLET" && binanceSuccessData.newBalance !== undefined && (
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Nuevo Saldo en Wallet:</span>
-                        <span className="font-mono font-semibold text-white">
+                        <span className={`font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>Nuevo Saldo en Wallet:</span>
+                        <span className={`font-mono font-black ${isDark ? "text-white" : "text-slate-950"}`}>
                           ${Number(binanceSuccessData.newBalance).toFixed(2)} USD
                         </span>
                       </div>
