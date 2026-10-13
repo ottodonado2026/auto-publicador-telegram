@@ -103,7 +103,8 @@ export async function runCampaignBroadcast(
     });
 
     const dailyRate = Number(campaign.user?.subscription?.dailyRate || 1.25);
-    const maxDailyLimit = getDailyPostLimitByRate(dailyRate);
+    const maxCampSub = campaign.user?.subscription?.maxCampaigns || 2;
+    const maxDailyLimit = maxCampSub >= 50 ? 99999 : getDailyPostLimitByRate(dailyRate);
 
     if (!options?.isPaidExtraRound && sentTodayCount >= maxDailyLimit) {
       return {
@@ -140,20 +141,13 @@ export async function runCampaignBroadcast(
       };
     }
 
-    // Determinar el pool de cuentas de Telegram a usar
+    // Determinar la cuenta de Telegram emisora asignada a esta campaña
     let accountPool: any[] = [];
     const primaryAcc = campaign.telegramAccount;
 
     if (primaryAcc && !primaryAcc.isSystemAccount && primaryAcc.sessionString && primaryAcc.status === "CONNECTED") {
-      const clientAccounts = await prisma.telegramAccount.findMany({
-        where: {
-          userId: campaign.userId,
-          isSystemAccount: false,
-          status: "CONNECTED",
-          sessionString: { not: null },
-        },
-      });
-      accountPool = clientAccounts.length > 0 ? clientAccounts : [primaryAcc];
+      // Emitir con la cuenta de Telegram específica asignada a esta campaña (donde están unidos esos grupos)
+      accountPool = [primaryAcc];
     } else {
       const farmAccounts = await prisma.telegramAccount.findMany({
         where: {

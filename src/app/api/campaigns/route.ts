@@ -79,7 +79,7 @@ export async function GET() {
 
     const maxCampQuota = user?.subscription?.maxCampaigns || 2;
     const baseDailyPosts =
-      maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
+      maxCampQuota >= 50 ? 99999 : maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
     // Solo suma +100 envíos diarios extra si la cuenta adicional está pagada y vigente en el ciclo actual
     const extraAccountsBonusPosts = Math.max(0, effectivePaidAccountsCount - 1) * 100;
     const maxDailyPosts = baseDailyPosts + extraAccountsBonusPosts;

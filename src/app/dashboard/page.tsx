@@ -142,6 +142,46 @@ export default function ClientDashboard() {
     }
   };
 
+  // Eliminar con 1 clic un grupo que haya arrojado error en la campaña para evitar bloqueos
+  const handleRemoveErroredGroup = async (campaign: any, groupToRemove: string) => {
+    try {
+      setActionLoading(campaign.id);
+      const currentTargets: string[] = Array.isArray(campaign.targetGroupIds)
+        ? campaign.targetGroupIds
+        : [];
+      const updatedTargets = currentTargets.filter(
+        (g) => g.toLowerCase() !== groupToRemove.toLowerCase()
+      );
+
+      const res = await fetch("/api/campaigns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: campaign.id,
+          targetGroupIds: updatedTargets,
+        }),
+      });
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "No se pudo quitar el grupo con error");
+      }
+      setBroadcastFeedback({
+        id: campaign.id,
+        message: `✅ Grupo "${groupToRemove}" eliminado de la campaña para proteger tu cuenta y la Granja contra bloqueos.`,
+        isError: false,
+      });
+      await fetchDashboard();
+    } catch (err: any) {
+      setBroadcastFeedback({
+        id: campaign.id,
+        message: err.message || "Error al eliminar el grupo",
+        isError: true,
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const membership = data?.membership;
   const allCampaigns = data?.campaigns || [];
   const activeCampaigns = allCampaigns.filter((c: any) => c.status === "ACTIVE");
@@ -153,7 +193,9 @@ export default function ClientDashboard() {
   // Límites reales según el plan activo del usuario
   const maxAllowedActive = sessionUser?.subscription?.maxCampaigns || 2;
   const planName =
-    maxAllowedActive >= 8
+    maxAllowedActive >= 50
+      ? "Promotor Ilimitado 24/7"
+      : maxAllowedActive >= 8
       ? "Plan Mensual"
       : maxAllowedActive >= 5
       ? "Plan Quincenal"
@@ -161,9 +203,9 @@ export default function ClientDashboard() {
       ? "Plan Semanal"
       : "Pase Express";
   const maxGroupsAllowed =
-    maxAllowedActive >= 8 ? 9999 : maxAllowedActive >= 5 ? 100 : maxAllowedActive >= 3 ? 50 : 25;
+    maxAllowedActive >= 50 ? 9999 : maxAllowedActive >= 8 ? 100 : maxAllowedActive >= 5 ? 60 : maxAllowedActive >= 3 ? 50 : 25;
   const maxDailyPosts =
-    maxAllowedActive >= 8 ? 500 : maxAllowedActive >= 5 ? 300 : maxAllowedActive >= 3 ? 200 : 100;
+    data?.maxDailyPosts || (maxAllowedActive >= 50 ? 99999 : maxAllowedActive >= 8 ? 500 : maxAllowedActive >= 5 ? 300 : maxAllowedActive >= 3 ? 200 : 100);
 
   const todaySentCount = Math.min(data?.todaySentCount || 0, maxDailyPosts);
   const dailyLimitReached = (data?.rawTodaySentCount || 0) >= maxDailyPosts;
@@ -172,12 +214,6 @@ export default function ClientDashboard() {
   // División automática de publicaciones diarias entre las campañas activas
   const activeCountForSplit = Math.max(1, activeCampaigns.length);
   const postsPerActiveCampaign = Math.floor(maxDailyPosts / activeCountForSplit);
-
-  // Clics / Interacciones estimadas hacia el @usuario o canal de Telegram (basado en grupos impactados hoy)
-  const estimatedProfileClicks = Math.max(
-    todaySentCount > 0 ? Math.ceil(todaySentCount * 0.35) : 0,
-    groupBreakdown.length * 2
-  );
 
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${
@@ -677,12 +713,32 @@ export default function ClientDashboard() {
                           ? new Date(logs[0].createdAt).toLocaleString()
                           : "En espera de ciclo";
 
+                        // Detectar grupos con error (status === "FAILED") que aún estén dentro de los grupos asignados a esta campaña
+                        const failedLogsMap = new Map<string, { groupId: string; groupName: string; errorMessage: string }>();
+                        for (const log of logs) {
+                          if (log.status === "FAILED" && log.targetGroupId) {
+                            const stillInCampaign = uniqueTargets.some(
+                              (t: any) => String(t).toLowerCase() === String(log.targetGroupId).toLowerCase()
+                            );
+                            if (stillInCampaign && !failedLogsMap.has(log.targetGroupId)) {
+                              failedLogsMap.set(log.targetGroupId, {
+                                groupId: log.targetGroupId,
+                                groupName: log.targetGroupName || log.targetGroupId,
+                                errorMessage:
+                                  log.errorMessage ||
+                                  "El grupo no permite publicar mensajes o requiere permisos especiales.",
+                              });
+                            }
+                          }
+                        }
+                        const activeFailedGroups = Array.from(failedLogsMap.values());
+
                         return (
                           <div
                             key={c.id}
                             className="rounded-3xl p-5 sm:p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white transition-all"
                           >
-                            {/* Cabecera de la Campaña con todos los botones alineados en una sola fila */}
+                            {/* Cabecera de la Campaña con todos los botones alineados en una sola fila (Sin texto feo debajo) */}
                             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-5">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2.5">
@@ -700,12 +756,9 @@ export default function ClientDashboard() {
                                     </span>
                                   )}
                                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30">
-                                    Hoy: {campSentToday} / {postsPerActiveCampaign} envíos
+                                    Hoy: {campSentToday} / {postsPerActiveCampaign >= 90000 ? "Ilimitados" : `${postsPerActiveCampaign} envíos`}
                                   </span>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1 truncate">
-                                  Grupos en esta campaña: <strong className="text-white">{targetCount}</strong> de {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed} ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
-                                </p>
                               </div>
 
                               {/* Fila Única Alineada: Editar + Pausar (sólo cuando cumpla el ciclo) + Ronda Manual */}
@@ -772,6 +825,47 @@ export default function ClientDashboard() {
                                 )}
                               </div>
                             </div>
+
+                            {/* ALERTA DE SEGURIDAD ANTI-BANEO: GRUPOS CON ERROR DETECTADOS */}
+                            {activeFailedGroups.length > 0 && (
+                              <div className="mb-4 p-4 rounded-2xl bg-red-950/40 border border-red-500/50 space-y-2.5">
+                                <div className="flex items-start gap-2.5 text-red-400">
+                                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                                  <div>
+                                    <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide">
+                                      ⚠️ Atención Anti-Bloqueo: {activeFailedGroups.length} grupo(s) con error de publicación detectado
+                                    </h4>
+                                    <p className="text-xs text-red-200/90 mt-0.5 leading-relaxed">
+                                      El sistema detectó que el siguiente grupo rechaza publicaciones (sin permisos de escritura, enlace inválido o restricción). <strong>Debes eliminarlo de tu campaña</strong> para evitar bloqueos en tu cuenta de Telegram o en los bots de nuestra Granja:
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1.5 pt-1">
+                                  {activeFailedGroups.map((fg) => (
+                                    <div
+                                      key={fg.groupId}
+                                      className="p-2.5 rounded-xl bg-black/40 border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                                    >
+                                      <div className="min-w-0">
+                                        <span className="font-black text-red-300 font-mono">{fg.groupName}</span>
+                                        <span className="text-slate-400 block sm:inline sm:ml-2 text-[11px]">
+                                          • Motivo: {fg.errorMessage}
+                                        </span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={actionLoading === c.id}
+                                        onClick={() => handleRemoveErroredGroup(c, fg.groupId)}
+                                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-black whitespace-nowrap cursor-pointer transition-all self-start sm:self-center"
+                                      >
+                                        🗑️ Eliminar Grupo de la Campaña
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                             {/* Feedback de Difusión */}
                             {broadcastFeedback && broadcastFeedback.id === c.id && (
@@ -951,29 +1045,49 @@ export default function ClientDashboard() {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                                  {paginatedLogs.map((log: any) => (
-                                    <div 
-                                      key={log.id}
-                                      className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#131B2A] border border-[#223049]"
-                                    >
-                                      <div className="flex items-center gap-1.5 truncate pr-1.5">
-                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                          log.status === "SENT" ? "bg-emerald-400" : "bg-red-500"
-                                        }`} />
-                                        <span className="font-bold text-white truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
-                                          {log.targetGroupName || log.targetGroupId}
-                                        </span>
+                                  {paginatedLogs.map((log: any) => {
+                                    const isFailed = log.status === "FAILED";
+                                    return (
+                                      <div 
+                                        key={log.id}
+                                        className={`flex items-center justify-between text-xs p-2.5 rounded-xl border ${
+                                          isFailed
+                                            ? "bg-red-950/30 border-red-500/40"
+                                            : "bg-[#131B2A] border border-[#223049]"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-1.5 truncate pr-1.5">
+                                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                            isFailed ? "bg-red-500 animate-pulse" : "bg-emerald-400"
+                                          }`} />
+                                          <span className="font-bold text-white truncate text-[11px]" title={log.errorMessage || log.targetGroupName || log.targetGroupId}>
+                                            {log.targetGroupName || log.targetGroupId}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                          {isFailed ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleRemoveErroredGroup(c, log.targetGroupId)}
+                                              title="Eliminar este grupo con error para evitar bloqueos"
+                                              className="text-[9px] font-black px-1.5 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white cursor-pointer"
+                                            >
+                                              ⚠️ Quitar
+                                            </button>
+                                          ) : (
+                                            <>
+                                              <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                                ✓
+                                              </span>
+                                              <span className="text-[10px] text-slate-400 font-mono">
+                                                {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-1 flex-shrink-0">
-                                        <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                                          ✓
-                                        </span>
-                                        <span className="text-[10px] text-slate-400 font-mono">
-                                          {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}

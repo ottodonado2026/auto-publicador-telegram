@@ -120,7 +120,7 @@ const TRANSLATIONS: Record<LangCode, any> = {
         "Escaneo en vivo de todos los grupos donde estás unido.",
         "Los mensajes salen con tu propio nombre y perfil de Telegram.",
         "Conecta hasta 2 o 3 cuentas de Telegram en rotación según tu plan.",
-        "¿Necesitas más capacidad? Adiciona cuentas extra por solo $3.00 USD pago único.",
+        "¿Necesitas más capacidad? Adiciona cuentas extra (+25 grupos y +100 envíos/día) por $3.00 USD por ciclo.",
       ],
       mod2Badge: "MODALIDAD 2 • CERO RIESGO PERSONAL",
       mod2Title: "Publica con Nuestra Granja Verificada OttBot 24/7",
@@ -145,7 +145,14 @@ const TRANSLATIONS: Record<LangCode, any> = {
       dailyPostsLimit: "Publicaciones automáticas / día",
       accountsLimit: "Cuenta(s) de Telegram en rotación",
       extraAccountNote: "Opción de adicionar cuenta extra de Telegram por solo",
-      oneTimePayment: "Pago Único",
+      oneTimePayment: "Por Ciclo",
+      extraBoxBadge: "CUENTAS ADICIONALES DE TELEGRAM • MULTI-CUENTA",
+      extraBoxTitle: "¿Tienes varios números de Telegram con diferentes grupos?",
+      extraBoxPriceSuffix: "/ ciclo del plan",
+      extraBoxDesc:
+        "En cualquier plan puedes vincular Cuentas Adicionales de Telegram. Cada cuenta extra escanea sus propios grupos de forma independiente y suma automáticamente +25 Grupos de Destino y +100 Publicaciones Automáticas al día durante la vigencia de tu plan activo.",
+      extraBoxRule:
+        "Condición de Renovación: El valor de la cuenta extra aplica por el ciclo de tu membresía activa. Si al vencer renuevas un plan básico de 1 o 7 días sin incluir la cuenta extra, el sistema mantendrá activa tu cuenta principal y pausará (🔒) las cuentas adicionales hasta que las renueves o adquieras el Plan Quincenal (incluye 2 cuentas) o Mensual (incluye 3 cuentas).",
       ctaSelect: "Comenzar con este Plan",
       ctaFreeTrialBannerTitle: "¿Quieres probar el sistema en vivo antes de recargar?",
       ctaFreeTrialBannerSub: "Regístrate ahora mismo en 30 segundos y activa tu Prueba Gratis de 1 Día con acceso real al panel.",
@@ -213,6 +220,10 @@ const TRANSLATIONS: Record<LangCode, any> = {
         {
           q: "¿Cómo se dividen las publicaciones diarias entre mis campañas y grupos?",
           a: "Tu plan incluye un cupo total de publicaciones automáticas al día (por ejemplo, 100 en el Pase Express o 500 en el Mensual). Si tienes 1 campaña activa con 25 grupos, esa campaña se publicará 100 veces repartidas en esos 25 grupos. Si activas 2 campañas, las 100 publicaciones se dividen entre ambas campañas en rondas continuas cada 60 segundos.",
+        },
+        {
+          q: "¿Cómo funcionan las Cuentas Adicionales de Telegram (+$3.00 USD por ciclo)?",
+          a: "Si tienes varios números de Telegram con diferentes grupos, puedes adicionar cuentas extra por +$3.00 USD por ciclo de membresía. Cada cuenta extra escanea sus propios grupos por separado y te suma +25 grupos de destino y +100 publicaciones diarias adicionales durante la vigencia de tu plan.",
         },
         {
           q: "¿Cómo funciona el código único BOT-IXXXXXX para recargar mi Wallet?",
@@ -314,9 +325,9 @@ const TRANSLATIONS: Record<LangCode, any> = {
         "Live scanning of all Telegram groups where you are a member.",
         "Messages are sent directly from your own Telegram profile.",
         "Connect up to 2 or 3 Telegram accounts in rotation depending on your plan.",
-        "Need more capacity? Add extra Telegram accounts for a $3.00 USD one-time fee.",
+        "Need more capacity? Add extra Telegram accounts (+25 groups & +100 posts/day) for $3.00 USD per cycle.",
       ],
-      mod2Badge: "MODALITY 2 • ZERO PERSONAL RISK",
+      mod2Badge: "MODALIDAD 2 • ZERO PERSONAL RISK",
       mod2Title: "Publish with Our Verified OttBot Farm 24/7",
       mod2Desc:
         "Don't want to use your personal number or just starting out? Enable our Verified Account Farm and our bots will broadcast your copy and image for you.",
@@ -339,7 +350,14 @@ const TRANSLATIONS: Record<LangCode, any> = {
       dailyPostsLimit: "Automated publications / day",
       accountsLimit: "Telegram account(s) in rotation",
       extraAccountNote: "Option to add an extra Telegram account for only",
-      oneTimePayment: "One-Time Payment",
+      oneTimePayment: "Per Cycle",
+      extraBoxBadge: "EXTRA TELEGRAM ACCOUNTS • MULTI-ACCOUNT EXPANSION",
+      extraBoxTitle: "Have multiple Telegram numbers with different groups?",
+      extraBoxPriceSuffix: "/ plan cycle",
+      extraBoxDesc:
+        "On any plan, you can link Extra Telegram Accounts. Each extra account independently scans its own groups and automatically adds +25 Target Groups and +100 Automated Daily Posts during your active plan cycle.",
+      extraBoxRule:
+        "Renewal Condition: The extra account fee applies per active membership cycle. If you later renew a basic 1-day or 7-day plan without the extra account, your primary account stays active while extra accounts are paused (🔒) until renewed or upgraded to the Biweekly (2 accounts) or Monthly (3 accounts) plan.",
       ctaSelect: "Start with this Plan",
       ctaFreeTrialBannerTitle: "Want to test the live system before topping up?",
       ctaFreeTrialBannerSub: "Sign up in 30 seconds and activate your 1-Day Free Trial with full dashboard access.",
@@ -407,6 +425,10 @@ const TRANSLATIONS: Record<LangCode, any> = {
         {
           q: "How are daily publications divided between my campaigns and groups?",
           a: "Your plan includes a daily quota of automated broadcasts (e.g., 100 in Express Pass or 500 in Monthly Elite). If you have 1 active campaign with 25 groups, that campaign will be published 100 times across those 25 groups. If you activate 2 campaigns, the 100 broadcasts are shared between both campaigns in continuous 60-second rounds.",
+        },
+        {
+          q: "How do Extra Telegram Accounts (+$3.00 USD per cycle) work?",
+          a: "If you have multiple Telegram numbers joined to different groups, you can add extra accounts for +$3.00 USD per membership cycle. Each extra account scans its own groups independently and adds +25 target groups and +100 daily broadcasts during your active plan.",
         },
         {
           q: "How does my unique BOT-IXXXXXX code work for Wallet top-ups?",
@@ -508,7 +530,7 @@ const TRANSLATIONS: Record<LangCode, any> = {
         "Escaneamento ao vivo de todos os grupos onde você é membro.",
         "As mensagens saem com seu próprio nome e perfil do Telegram.",
         "Conecte até 2 ou 3 contas do Telegram em rotação conforme seu plano.",
-        "Precisa de mais? Adicione contas extras por apenas $3.00 USD pagamento único.",
+        "Precisa de mais? Adicione contas extras (+25 grupos e +100 envios/dia) por $3.00 USD por ciclo.",
       ],
       mod2Badge: "MODALIDADE 2 • RISCO ZERO PESSOAL",
       mod2Title: "Publique com Nossa Fazenda Verificada OttBot 24/7",
@@ -533,7 +555,14 @@ const TRANSLATIONS: Record<LangCode, any> = {
       dailyPostsLimit: "Publicações automáticas / dia",
       accountsLimit: "Conta(s) do Telegram em rotação",
       extraAccountNote: "Opção de adicionar conta extra do Telegram por apenas",
-      oneTimePayment: "Pagamento Único",
+      oneTimePayment: "Por Ciclo",
+      extraBoxBadge: "CONTAS EXTRAS DO TELEGRAM • MULTI-CONTAS",
+      extraBoxTitle: "Tem vários números do Telegram com grupos diferentes?",
+      extraBoxPriceSuffix: "/ ciclo do plano",
+      extraBoxDesc:
+        "Em qualquer plano você pode vincular Contas Extras do Telegram. Cada conta extra escaneia seus próprios grupos separadamente e adiciona +25 Grupos de Destino e +100 Publicações Automáticas por dia durante a vigência do seu plano.",
+      extraBoxRule:
+        "Condição de Renovação: O valor da conta extra é válido pelo ciclo do plano ativo. Ao renovar um plano básico de 1 ou 7 dias sem incluir a conta extra, sua conta principal segue ativa e as contas extras ficam pausadas (🔒) até serem renovadas ou migradas para o Plano Quinzenal (2 contas) ou Mensal (3 contas).",
       ctaSelect: "Começar com este Plano",
       ctaFreeTrialBannerTitle: "Quer testar o sistema ao vivo antes de recarregar?",
       ctaFreeTrialBannerSub: "Cadastre-se agora em 30 segundos e ative seu Teste Grátis de 1 Dia com acesso real ao painel.",
@@ -595,12 +624,16 @@ const TRANSLATIONS: Record<LangCode, any> = {
         "Nosso sistema opera 100% online e funciona com contas e grupos do Telegram de qualquer país:",
     },
     faqSection: {
-      tag: "PERGUNTAS FREQUENTES",
+      tag: "PERGUNTAS FRECUENTES",
       title: "Tudo o que você precisa saber sobre o OttBot PRO",
       items: [
         {
           q: "Como as publicações diárias são divididas entre minhas campanhas e grupos?",
           a: "Seu plano inclui uma cota diária de envios automáticos (ex.: 100 no Passe Express ou 500 no Mensal). Se você tiver 1 campanha ativa com 25 grupos, ela será publicada 100 vezes nesses 25 grupos. Se ativar 2 campanhas, os 100 envios serão divididos entre ambas em rodadas a cada 60 segundos.",
+        },
+        {
+          q: "Como funcionam as Contas Extras do Telegram (+$3.00 USD por ciclo)?",
+          a: "Se você tem vários números do Telegram em grupos diferentes, pode adicionar contas extras por +$3.00 USD por ciclo de assinatura. Cada conta extra escaneia seus próprios grupos e soma +25 grupos de destino e +100 envios diários durante a vigência do plano.",
         },
         {
           q: "Como funciona meu código único BOT-IXXXXXX para recarregar a Wallet?",
@@ -702,7 +735,7 @@ const TRANSLATIONS: Record<LangCode, any> = {
         "Détection en direct de tous vos groupes Telegram.",
         "Les messages sont envoyés sous votre propre profil Telegram.",
         "Connectez jusqu'à 2 ou 3 comptes Telegram en rotation selon votre offre.",
-        "Ajoutez des comptes supplémentaires pour seulement 3,00 $ USD en paiement unique.",
+        "Ajoutez des comptes supplémentaires (+25 groupes & +100 envois/jour) pour 3,00 $ USD par cycle.",
       ],
       mod2Badge: "MODALITÉ 2 • ZÉRO RISQUE PERSONNEL",
       mod2Title: "Publiez avec Notre Ferme Vérifiée OttBot 24/7",
@@ -727,7 +760,14 @@ const TRANSLATIONS: Record<LangCode, any> = {
       dailyPostsLimit: "Publications automatiques / jour",
       accountsLimit: "Compte(s) Telegram en rotation",
       extraAccountNote: "Option d'ajout de compte Telegram supplémentaire pour seulement",
-      oneTimePayment: "Paiement Unique",
+      oneTimePayment: "Par Cycle",
+      extraBoxBadge: "COMPTES TELEGRAM SUPPLÉMENTAIRES • MULTI-COMPTES",
+      extraBoxTitle: "Vous avez plusieurs numéros Telegram avec différents groupes ?",
+      extraBoxPriceSuffix: "/ cycle de l'offre",
+      extraBoxDesc:
+        "Dans chaque offre, vous pouvez lier des Comptes Telegram Supplémentaires. Chaque compte extra analyse ses propres groupes séparément et ajoute +25 Groupes Cibles et +100 Publications Automatiques par jour pendant la durée de votre offre.",
+      extraBoxRule:
+        "Condition de Renouvellement : Le tarif du compte supplémentaire s'applique par cycle d'abonnement actif. En cas de renouvellement d'une offre 1 ou 7 jours sans le compte extra, votre compte principal reste actif et les comptes supplémentaires sont mis en pause (🔒) jusqu'à leur renouvellement.",
       ctaSelect: "Choisir cette Offre",
       ctaFreeTrialBannerTitle: "Vous voulez tester le système en direct avant de recharger ?",
       ctaFreeTrialBannerSub: "Inscrivez-vous en 30 secondes et activez votre Essai Gratuit d'1 Jour avec accès complet au portail.",
@@ -795,6 +835,10 @@ const TRANSLATIONS: Record<LangCode, any> = {
         {
           q: "Comment les publications quotidiennes sont-elles réparties entre mes campagnes et groupes ?",
           a: "Votre offre inclut un quota quotidien d'envois automatiques (ex. 100 dans le Pass Express ou 500 dans l'Offre Mensuelle). Si vous avez 1 campagne active avec 25 groupes, elle sera publiée 100 fois dans ces 25 groupes. Si vous activez 2 campagnes, les 100 publications sont partagées entre les deux campagnes toutes les 60 secondes.",
+        },
+        {
+          q: "Comment fonctionnent les Comptes Telegram Supplémentaires (+3,00 $ USD par cycle) ?",
+          a: "Si vous possédez plusieurs numéros Telegram ayant rejoint différents groupes, vous pouvez ajouter des comptes supplémentaires pour +3,00 $ USD par cycle. Chaque compte analyse ses propres groupes et ajoute +25 groupes cibles et +100 publications quotidiennes pendant la durée de votre offre.",
         },
         {
           q: "Comment fonctionne mon code unique BOT-IXXXXXX pour recharger mon Wallet ?",
@@ -1454,9 +1498,57 @@ export default function LandingPage() {
           ))}
         </div>
 
+        {/* Tarjeta Informativa de Cuentas Adicionales de Telegram (+$3.00 USD / Ciclo) */}
+        <div
+          className={`mt-8 rounded-3xl p-6 sm:p-7 border-2 shadow-lg ${
+            isDark
+              ? "bg-gradient-to-r from-[#181C24] via-[#1B2230] to-[#181C24] border-[#229ED9]/40"
+              : "bg-gradient-to-r from-sky-50/80 via-white to-indigo-50/60 border-[#229ED9]/40"
+          }`}
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="space-y-2 max-w-3xl">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#229ED9]/15 text-[#229ED9] border border-[#229ED9]/30 text-[10px] font-black uppercase tracking-wider">
+                📱 {t.plansSection.extraBoxBadge}
+              </span>
+              <h3 className="text-base sm:text-xl font-black">{t.plansSection.extraBoxTitle}</h3>
+              <p className={`text-xs sm:text-sm leading-relaxed ${isDark ? "text-neutral-300" : "text-slate-600"}`}>
+                {t.plansSection.extraBoxDesc}
+              </p>
+              <p className={`text-[11px] leading-relaxed pt-1 font-semibold ${isDark ? "text-amber-300/90" : "text-amber-800"}`}>
+                ⚠️ {t.plansSection.extraBoxRule}
+              </p>
+            </div>
+
+            <div
+              className={`p-4 sm:p-5 rounded-2xl border text-center flex-shrink-0 min-w-[230px] ${
+                isDark ? "bg-[#12161E] border-[#2A3346]" : "bg-[#F4F6F9] border-slate-300"
+              }`}
+            >
+              <div className="text-[11px] font-black uppercase tracking-wider text-[#229ED9]">
+                +1 Cuenta Telegram Extra
+              </div>
+              <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-500 mt-1">
+                +{formatPrice(3.0)}
+              </div>
+              <div className={`text-[11px] font-bold mt-0.5 ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+                {t.plansSection.extraBoxPriceSuffix}
+              </div>
+              {currencyCode !== "USD" && (
+                <div className="text-[10px] font-mono text-neutral-400 mt-1">
+                  ($3.00 USD)
+                </div>
+              )}
+              <div className="mt-3 pt-2.5 border-t border-neutral-500/20 text-[11px] font-bold text-emerald-500">
+                +25 Grupos • +100 Envíos/Día
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Banner Inferior de Prueba Gratis de 1 Día */}
         <div
-          className={`mt-10 rounded-3xl p-7 sm:p-8 border-2 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xl ${
+          className={`mt-8 rounded-3xl p-7 sm:p-8 border-2 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xl ${
             isDark
               ? "bg-gradient-to-r from-emerald-950/60 via-[#181C24] to-[#181C24] border-emerald-500/40"
               : "bg-gradient-to-r from-emerald-50 via-[#F4F6F9] to-sky-50 border-emerald-500/40"

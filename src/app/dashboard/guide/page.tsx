@@ -71,7 +71,7 @@ const PLAN_EXPLANATIONS = [
     color: "text-purple-400",
     badgeBg: "bg-purple-500/15 border-purple-500/30 text-purple-400",
     summary:
-      "Diseñado para tiendas con catálogo amplio. Incluye 300 publicaciones diarias, hasta 100 grupos y soporte para conectar 2 números de Telegram.",
+      "Diseñado para usuarios y marcas con múltiples anuncios. Incluye 300 publicaciones diarias, hasta 60 grupos y soporte para conectar 2 números de Telegram.",
     scenarios: [
       {
         title: "División entre hasta 5 campañas activas",
@@ -81,7 +81,7 @@ const PLAN_EXPLANATIONS = [
       {
         title: "Ventaja de tus 2 Cuentas de Telegram",
         detail:
-          "Al vincular 2 cuentas de Telegram, el sistema alterna los envíos entre ambos números (150 envíos con la Cuenta 1 y 150 con la Cuenta 2), reduciendo a cero cualquier límite de Telegram.",
+          "Al vincular 2 cuentas de Telegram, cada cuenta escanea sus propios grupos independientes y puedes publicar copys distintos en los grupos de cada número.",
       },
     ],
   },
@@ -89,14 +89,14 @@ const PLAN_EXPLANATIONS = [
     id: "mensual",
     tag: "Plan Mensual (30 Días)",
     price: "$24.00 USD ($0.80/día)",
-    groups: "Grupos Ilimitados",
+    groups: "Hasta 100 grupos",
     dailyPosts: "500 publicaciones / día",
     maxCampaigns: "Hasta 8 campañas activas",
     accounts: "Hasta 3 Cuentas de Telegram simultáneas",
     color: "text-emerald-400",
     badgeBg: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400",
     summary:
-      "Máxima potencia comercial a solo $0.80 USD por día. Sin límite de grupos, 500 publicaciones automáticas diarias y hasta 3 cuentas de Telegram en rotación.",
+      "Máxima potencia comercial a solo $0.80 USD por día. Hasta 100 grupos, 500 publicaciones automáticas diarias y hasta 3 cuentas de Telegram en rotación.",
     scenarios: [
       {
         title: "Distribución masiva de 500 publicaciones diarias",
@@ -106,7 +106,7 @@ const PLAN_EXPLANATIONS = [
       {
         title: "Rotación con 3 Cuentas de Telegram + Granja OttBot",
         detail:
-          "Conecta hasta 3 números propios o apóyate en nuestra flota de bots para cubrir cientos de grupos cada día en piloto automático 24/7.",
+          "Conecta hasta 3 números propios o apóyate en nuestra flota de bots para cubrir decenas de grupos cada día en piloto automático 24/7.",
       },
     ],
   },
@@ -118,7 +118,7 @@ export default function ClientGuidePage() {
 
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [membership, setMembership] = useState<any>(null);
-  const [activeGuideTab, setActiveGuideTab] = useState<"CAMPAIGNS_SPLIT" | "MODALITIES" | "ANTIBAN">("CAMPAIGNS_SPLIT");
+  const [activeGuideTab, setActiveGuideTab] = useState<"CAMPAIGNS_SPLIT" | "EXTRA_ACCOUNTS" | "MODALITIES" | "ANTIBAN">("CAMPAIGNS_SPLIT");
   const [selectedPlanTab, setSelectedPlanTab] = useState<string>("express");
 
   useEffect(() => {
@@ -149,10 +149,10 @@ export default function ClientGuidePage() {
             <span>Centro de Capacitación Oficial OttBot</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Guía de Instrucciones & Reglas de Campañas
+            Guía de Instrucciones & Condiciones del Servicio
           </h1>
           <p className={`text-xs font-semibold mt-1.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-            Selecciona una pestaña para entender exactamente cómo se dividen tus campañas, grupos y publicaciones diarias según tu membresía.
+            Selecciona una pestaña para conocer cómo se dividen tus campañas, las condiciones de cobro de Cuentas Extra de Telegram y la eliminación de grupos con error.
           </p>
         </div>
 
@@ -170,7 +170,22 @@ export default function ClientGuidePage() {
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>📊 Cómo se Dividen Campañas y Envíos por Plan</span>
+            <span>📊 Campañas y Envíos por Plan</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveGuideTab("EXTRA_ACCOUNTS")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer border ${
+              activeGuideTab === "EXTRA_ACCOUNTS"
+                ? "bg-[#229ED9] text-white border-[#38BDF8] shadow-lg shadow-[#229ED9]/25"
+                : isDark
+                ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:text-white"
+                : "bg-white border-neutral-300 text-neutral-700"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>📱 Condiciones de Cuentas Extra ($3 USD / Ciclo)</span>
           </button>
 
           <button
@@ -185,7 +200,7 @@ export default function ClientGuidePage() {
             }`}
           >
             <Bot className="w-4 h-4" />
-            <span>🤖 Tu Cuenta Propia vs. Granja OttBot</span>
+            <span>🤖 Cuenta Propia vs. Granja OttBot</span>
           </button>
 
           <button
@@ -200,7 +215,7 @@ export default function ClientGuidePage() {
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>🛡️ Reglas Antibaneo (Intervalo 60s y Descansos)</span>
+            <span>🛡️ Reglas Antibaneo y Grupos con Error</span>
           </button>
         </div>
 
@@ -340,6 +355,67 @@ export default function ClientGuidePage() {
           </div>
         )}
 
+        {/* CONTENIDO PESTAÑA NUEVA: CONDICIONES DE CUENTAS ADICIONALES DE TELEGRAM */}
+        {activeGuideTab === "EXTRA_ACCOUNTS" && (
+          <div className={`rounded-3xl p-6 sm:p-7 border shadow-xl space-y-5 ${
+            isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+          }`}>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                Reglas Oficiales de Multi-Cuenta
+              </span>
+              <h2 className="text-lg font-black mt-0.5">
+                ¿Cómo funcionan las Cuentas Extras de Telegram y cómo se cobran?
+              </h2>
+              <p className={`text-xs leading-relaxed mt-1 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                Lee detenidamente las condiciones de funcionamiento y facturación por ciclo cuando agregas números adicionales de Telegram a tu panel:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl bg-[#0E1420] border border-[#233047] text-white space-y-2">
+                <div className="text-xs font-black text-[#38BDF8] uppercase flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>1. Grupos Independientes + Capacidad Extra</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Cuando vinculas una <strong>Cuenta Adicional de Telegram ($3.00 USD)</strong>, ese segundo o tercer número escanea sus propios grupos independientes. Además, durante el ciclo activo te suma automáticamente <strong>+25 grupos adicionales de destino</strong> y <strong>+100 publicaciones diarias extra</strong> para que publiques copys diferentes en los grupos de cada cuenta.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#0E1420] border border-amber-500/40 text-white space-y-2">
+                <div className="text-xs font-black text-amber-400 uppercase flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span>2. Cobro por Ciclo de Membresía (No es Pago Único Vitalicio)</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  El valor de <strong>$3.00 USD por Cuenta Extra</strong> cubre la vigencia del ciclo de tu plan actual. <strong>No es un pago único permanente:</strong> si tienes el Pase Express de 1 Día y activas una Cuenta Extra, dicha cuenta extra dura ese ciclo. Al renovar el plan en el siguiente ciclo, debes cubrir nuevamente la Cuenta Extra (o subir al <strong>Plan Quincenal $13.50</strong> o <strong>Plan Mensual $24.00</strong> que ya incluyen <strong>2 y 3 cuentas de Telegram</strong> dentro de su precio).
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#0E1420] border border-[#233047] text-white space-y-2">
+                <div className="text-xs font-black text-emerald-400 uppercase flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>3. Renovación Automática con tu Wallet</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Al cumplirse la fecha de vencimiento de tu membresía, si cuentas con saldo suficiente en tu Wallet para cubrir tu <strong>Plan + tus Cuentas Extra</strong>, el sistema renueva todo automáticamente sin detener tus campañas.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#0E1420] border border-[#233047] text-white space-y-2">
+                <div className="text-xs font-black text-purple-400 uppercase flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span>4. ¿Qué ocurre si renuevo solo el Plan Básico sin la Cuenta Extra?</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Si al iniciar un nuevo ciclo solo pagas el Pase Express (1 Día) o Semanal (7 Días) básico sin el adicional de Cuenta Extra, tu cuenta volverá al cupo base de <strong>1 Cuenta de Telegram (25 o 50 grupos)</strong> y las cuentas adicionales quedarán en pausa con candado (<code>🔒</code>) hasta que actives el cupo extra o subas de membresía.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* CONTENIDO PESTAÑA 2: DOS MODALIDADES (CUENTA PROPIA VS GRANJA) */}
         {activeGuideTab === "MODALITIES" && (
           <div className={`rounded-3xl p-7 border shadow-xl ${
@@ -372,7 +448,7 @@ export default function ClientGuidePage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <span><strong>Opción Multicuenta (+1 Cuenta por $3 USD):</strong> Puedes agregar un 2do o 3er número de teléfono para repartir tus envíos.</span>
+                    <span><strong>Opción Multicuenta (+1 Cuenta por $3 USD / ciclo):</strong> Puedes agregar un 2do o 3er número con sus propios grupos independientes (+25 grupos y +100 envíos extra).</span>
                   </li>
                 </ul>
               </div>
@@ -403,18 +479,20 @@ export default function ClientGuidePage() {
           </div>
         )}
 
-        {/* CONTENIDO PESTAÑA 3: PROTOCOLO ANTIBANEO */}
+        {/* CONTENIDO PESTAÑA 3: PROTOCOLO ANTIBANEO Y ELIMINACIÓN DE GRUPOS CON ERROR */}
         {activeGuideTab === "ANTIBAN" && (
-          <div className={`rounded-3xl p-7 border shadow-xl ${
+          <div className={`rounded-3xl p-7 border shadow-xl space-y-5 ${
             isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
           }`}>
-            <h2 className="text-base font-black flex items-center gap-2.5 mb-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-500" />
-              <span>Protocolo de Seguridad Antibaneo: ¿Cómo funciona el Reloj en Vivo?</span>
-            </h2>
-            <p className={`text-xs leading-relaxed mb-5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-              Para proteger tus cuentas de Telegram frente a bloqueos (<code>FLOOD_WAIT</code>), cada campaña ejecuta una secuencia cronometrada automática:
-            </p>
+            <div>
+              <h2 className="text-base font-black flex items-center gap-2.5 mb-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                <span>Protocolo de Seguridad Antibaneo y Control de Grupos con Error</span>
+              </h2>
+              <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                Para proteger tus cuentas de Telegram y los bots de nuestra Granja frente a bloqueos (<code>FLOOD_WAIT</code>), aplicamos las siguientes reglas:
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className={`p-4 rounded-2xl border ${
@@ -442,14 +520,14 @@ export default function ClientGuidePage() {
               </div>
 
               <div className={`p-4 rounded-2xl border ${
-                isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
+                isDark ? "bg-red-950/20 border-red-500/40" : "bg-red-50 border-red-300"
               }`}>
-                <div className="flex items-center gap-2 text-purple-400 font-black text-xs uppercase mb-2">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>3. Control por Grupo en Vivo</span>
+                <div className="flex items-center gap-2 text-red-400 font-black text-xs uppercase mb-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>3. Eliminar Grupos con Error</span>
                 </div>
-                <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                  En tu panel principal puedes pulsar el botón <strong>"Métricas por Grupo & Clics"</strong> para ver exactamente cuántas publicaciones ha recibido cada grupo en el día.
+                <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-700"}`}>
+                  Si un grupo restringe mensajes o arroja error al publicar, tu panel mostrará una alerta roja (<strong>"⚠️ Grupo con error detectado"</strong>). Debes pulsar <strong>"Eliminar Grupo de la Campaña"</strong> de inmediato para evitar bloqueos en tu cuenta o en nuestra Granja.
                 </p>
               </div>
             </div>

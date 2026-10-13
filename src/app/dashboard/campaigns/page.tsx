@@ -222,7 +222,7 @@ export default function ClientCampaignsPage() {
   const maxAccountsPaid = sessionUser?.subscription?.maxAccounts || 1;
   const effectivePaidAccounts = Math.min(userAccounts.length, maxAccountsPaid);
   const baseGroupsAllowed =
-    maxCampQuota >= 8 ? 100 : maxCampQuota >= 5 ? 60 : maxCampQuota >= 3 ? 50 : 25;
+    maxCampQuota >= 50 ? 9999 : maxCampQuota >= 8 ? 100 : maxCampQuota >= 5 ? 60 : maxCampQuota >= 3 ? 50 : 25;
   // Solo suma +25 grupos extra si la cuenta adicional está pagada y activa en el ciclo vigente
   const extraAccountsBonusGroups = Math.max(0, effectivePaidAccounts - 1) * 25;
   const maxGroupsAllowed = baseGroupsAllowed + extraAccountsBonusGroups;
