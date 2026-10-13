@@ -30,8 +30,8 @@ export default function AdminSidebar() {
       {/* Brand Header */}
       <div>
         <div className="h-16 flex items-center gap-3 px-6 border-b border-[#2B303C]">
-          <div className="w-9 h-9 rounded-xl bg-[#229ED9] text-white flex items-center justify-center shadow-[0_4px_14px_rgba(34,158,217,0.35)] animate-float">
-            <Send className="w-4 h-4 -rotate-12 translate-x-[-1px] translate-y-[-1px] fill-white" />
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-sky-400/40 shadow-[0_4px_14px_rgba(34,158,217,0.35)] flex-shrink-0 animate-float">
+            <img src="/ottbot-logo.png" alt="OttBot Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
