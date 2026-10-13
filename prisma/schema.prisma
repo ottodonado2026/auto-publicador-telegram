@@ -116,16 +116,23 @@ model TelegramAccount {
 }
 
 model MembershipPlan {
-  id              String   @id @default(uuid())
-  name            String   // Ej: "1 Día Pase Diario", "Semanal 7 Días", "Mensual 30 Días"
-  days            Int      // 1, 7, 15, 30
-  priceUSD        Decimal  @db.Decimal(10, 2) // Ej: 1.25 para 1 día
-  dailyEquivalent Decimal  @db.Decimal(10, 2) // Ej: 1.25, 1.00, etc.
-  description     String?
-  isActive        Boolean  @default(true)
-  isPopular       Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  name             String   // Ej: "Pase Express (1 Día)", "Plan Semanal (7 Días)"
+  days             Int      // 1, 7, 15, 30
+  priceUSD         Decimal  @db.Decimal(10, 2)
+  dailyEquivalent  Decimal  @db.Decimal(10, 2)
+  description      String?
+  maxGroups        Int      @default(15)     // Límite de grupos destino
+  maxDailyPosts    Int      @default(50)     // Límite de mensajes/día
+  delayBetweenMsgs Int      @default(60)     // Segundos entre envíos (antibaneo)
+  cooldownMinutes  Int      @default(120)    // Minutos de descanso entre rondas de difusión
+  allowCustomBot   Boolean  @default(true)   // Conectar su propio Telegram
+  allowFarmBot     Boolean  @default(false)  // Usar la flota del sistema por links
+  features         Json?                     // Array de strings con viñetas de beneficios
+  isActive         Boolean  @default(true)
+  isPopular        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("membership_plans")
 }
