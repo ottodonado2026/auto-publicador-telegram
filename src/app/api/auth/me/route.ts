@@ -17,11 +17,23 @@ export async function GET() {
       select: {
         id: true,
         email: true,
+        phoneNumber: true,
+        storeName: true,
         name: true,
         role: true,
         isActive: true,
         createdAt: true,
         subscription: true,
+        telegramAccounts: {
+          select: {
+            id: true,
+            phoneNumber: true,
+            firstName: true,
+            username: true,
+            status: true,
+            isSystemAccount: true,
+          },
+        },
       },
     });
 

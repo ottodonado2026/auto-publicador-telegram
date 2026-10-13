@@ -28,7 +28,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
     { name: "Mis Campañas & Envíos", href: "/dashboard", icon: LayoutDashboard },
     { name: "Crear Nuevo Copy", href: "/dashboard/campaigns", icon: PlusCircle },
     { name: "Vincular mi Telegram", href: "/dashboard/telegram", icon: Send },
-    { name: "Recargar Membresía", href: "/admin/plans", icon: CreditCard },
+    { name: "Recargar Membresía", href: "/dashboard/plans", icon: CreditCard },
   ];
 
   const hasAccess = membership?.hasAccess;

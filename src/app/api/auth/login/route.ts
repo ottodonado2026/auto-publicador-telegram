@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
+import { checkRateLimit, recordFailedAttempt, clearRateLimit } from "@/lib/rateLimit";
 import { 
   TELEGRAM_API_ID, 
   TELEGRAM_API_HASH, 
@@ -25,6 +26,20 @@ export async function POST(req: NextRequest) {
     const trimmed = identifier.trim();
     const cleanPhone = cleanPhoneNumber(trimmed);
 
+    // Barrera Anti-Brute Force (Zero Trust & Anti-Kali/Burp Suite)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown-ip";
+    const rateLimitKey = `${ip}:${trimmed.toLowerCase()}`;
+
+    const limitCheck = checkRateLimit(rateLimitKey);
+    if (limitCheck.isBlocked) {
+      return NextResponse.json(
+        {
+          error: `Acceso bloqueado temporalmente por seguridad (Anti-Brute Force). Demasiados intentos fallidos. Intenta nuevamente en ${limitCheck.remainingMinutes} minutos.`,
+        },
+        { status: 429 }
+      );
+    }
+
     // Buscar por teléfono, nombre de tienda o correo
     const user = await prisma.user.findFirst({
       where: {
@@ -41,7 +56,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+      const attempt = recordFailedAttempt(rateLimitKey);
+      return NextResponse.json(
+        { 
+          error: attempt.locked 
+            ? "Acceso bloqueado por 15 minutos por exceso de intentos." 
+            : `Credenciales inválidas. Te quedan ${attempt.remainingAttempts} intento(s).` 
+        }, 
+        { status: attempt.locked ? 429 : 401 }
+      );
     }
 
     if (!user.isActive) {
@@ -53,8 +76,19 @@ export async function POST(req: NextRequest) {
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+      const attempt = recordFailedAttempt(rateLimitKey);
+      return NextResponse.json(
+        { 
+          error: attempt.locked 
+            ? "Acceso bloqueado por 15 minutos por exceso de intentos fallidos." 
+            : `Credenciales inválidas. Te quedan ${attempt.remainingAttempts} intento(s).` 
+        }, 
+        { status: attempt.locked ? 429 : 401 }
+      );
     }
+
+    // Limpiar contador de intentos tras autenticación correcta
+    clearRateLimit(rateLimitKey);
 
     // El Administrador Principal puede acceder directamente sin riesgo de bloqueo por flood de Telegram
     if (user.role === "SUPERADMIN") {
