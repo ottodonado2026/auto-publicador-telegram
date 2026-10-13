@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Credenciales configuradas en variables de entorno (.env / Vercel / Railway)
 const BINANCE_API_KEY =
   process.env.BINANCE_API_KEY ||
   "gdXUidih2KRIrQbLxuK0jGfk3Q38AiEwlfHUkW0B0ya7waDPGXVjW4SFKguY7nsU";
@@ -14,6 +13,8 @@ const BINANCE_API_SECRET =
   "v8viz5yxA6njiWh9N1s1mhgckyQEEU2SICcTxQ0lDfIaKjKOXSDUyORxptSBqd4x";
 const BINANCE_PAY_UID = process.env.BINANCE_PAY_UID || "1158258762";
 const BINANCE_PAY_USERNAME = process.env.BINANCE_PAY_USERNAME || "streamofi";
+
+const MIN_ALLOWED_AMOUNT_USD = 1.25;
 
 const PLAN_PRICES: Record<
   string,
@@ -31,6 +32,7 @@ export async function GET() {
   return NextResponse.json({
     binanceUid: BINANCE_PAY_UID,
     binanceUsername: BINANCE_PAY_USERNAME,
+    minAmountUSD: MIN_ALLOWED_AMOUNT_USD,
     supportedCurrencies: SUPPORTED_STABLECOINS,
   });
 }
@@ -43,12 +45,24 @@ export async function POST(req: NextRequest) {
     const rawOrderId = String(body.orderId || "").trim();
     const mode: "WALLET" | "PLAN" = body.mode === "PLAN" ? "PLAN" : "WALLET";
     const planId: string | undefined = body.planId;
+    const expectedAmount = body.expectedAmount ? Number(body.expectedAmount) : MIN_ALLOWED_AMOUNT_USD;
 
     if (!rawOrderId || rawOrderId.length < 6) {
       return NextResponse.json(
         {
           error:
-            "Por favor ingresa un Order ID (ID de Orden) o ID de Transacción válido de Binance Pay.",
+            "Por favor ingresa un Order ID (ID de Orden) válido de tu comprobante de Binance Pay.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (mode === "WALLET" && (isNaN(expectedAmount) || expectedAmount < MIN_ALLOWED_AMOUNT_USD)) {
+      return NextResponse.json(
+        {
+          error: `No se permite recargar menos de $${MIN_ALLOWED_AMOUNT_USD.toFixed(
+            2
+          )} USD (valor mínimo de los planes).`,
         },
         { status: 400 }
       );
@@ -63,25 +77,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
     }
 
-    // 1. Verificar que este Order ID no haya sido utilizado antes en WalletTransaction ni en Payment
-    const alreadyUsedTx = await prisma.walletTransaction.findFirst({
-      where: {
-        description: {
-          contains: rawOrderId,
-        },
-      },
-    });
-
-    const alreadyUsedPayment = await prisma.payment.findFirst({
-      where: {
-        reference: rawOrderId,
-      },
-    });
+    // 1. Verificar que este Order ID no haya sido utilizado antes en Neon PostgreSQL
+    const [alreadyUsedTx, alreadyUsedPayment] = await Promise.all([
+      prisma.walletTransaction.findFirst({
+        where: { description: { contains: rawOrderId } },
+      }),
+      prisma.payment.findFirst({
+        where: { reference: rawOrderId },
+      }),
+    ]);
 
     if (alreadyUsedTx || alreadyUsedPayment) {
       return NextResponse.json(
         {
-          error: `El Order ID "${rawOrderId}" ya fue verificado y acreditado anteriormente. No se puede reclamar dos veces.`,
+          error: `El Order ID "${rawOrderId}" ya fue verificado y acreditado anteriormente. No se puede utilizar dos veces.`,
         },
         { status: 400 }
       );
@@ -112,34 +121,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No se pudo conectar temporalmente con el verificador de Binance Pay. Intenta de nuevo en unos segundos.",
+            "No se pudo conectar temporalmente con Binance Pay. Intenta nuevamente en unos segundos.",
         },
         { status: 502 }
       );
     }
 
-    // 3. Buscar la transacción que coincida por orderId, transactionId o nota exacta
+    // 3. Buscar la transacción exacta por orderId o transactionId
     const matchedTx = binanceData.data.find((tx: any) => {
       const txOrderId = String(tx.orderId || "").trim();
       const txId = String(tx.transactionId || "").trim();
-      const txNote = String(tx.note || "").trim();
       return (
         txOrderId === rawOrderId ||
-        txId.toLowerCase() === rawOrderId.toLowerCase() ||
-        (txNote && txNote.toLowerCase() === rawOrderId.toLowerCase())
+        txId.toLowerCase() === rawOrderId.toLowerCase()
       );
     });
 
     if (!matchedTx) {
       return NextResponse.json(
         {
-          error: `No encontramos ningún pago recibido con el Order ID "${rawOrderId}" en la cuenta ${BINANCE_PAY_USERNAME} (UID: ${BINANCE_PAY_UID}). Verifica que hayas enviado el pago correctamente y espera 15 segundos si acabas de transferir.`,
+          error: `No encontramos ningún pago recibido con el Order ID "${rawOrderId}" en la cuenta ${BINANCE_PAY_USERNAME} (UID: ${BINANCE_PAY_UID}). Verifica que el Order ID sea el correcto y que el pago haya sido enviado a nuestro UID.`,
         },
         { status: 404 }
       );
     }
 
-    // 4. Doble verificación contra replay usando tanto orderId como transactionId reales de Binance
+    // 4. Doble verificación contra replay con los IDs oficiales devueltos por Binance
     const officialOrderId = String(matchedTx.orderId || rawOrderId);
     const officialTxId = String(matchedTx.transactionId || "");
 
@@ -155,7 +162,7 @@ export async function POST(req: NextRequest) {
     if (duplicateOfficial) {
       return NextResponse.json(
         {
-          error: `Este pago de Binance Pay (Order ID: ${officialOrderId}) ya fue acreditado previamente en el sistema.`,
+          error: `Este pago de Binance Pay (Order ID: ${officialOrderId}) ya fue procesado y acreditado anteriormente.`,
         },
         { status: 400 }
       );
@@ -169,7 +176,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "La transacción indicada no corresponde a un pago válido recibido en nuestra cuenta de Binance Pay.",
+            "La transacción indicada no corresponde a un pago recibido en nuestra cuenta oficial de Binance Pay.",
         },
         { status: 400 }
       );
@@ -182,7 +189,21 @@ export async function POST(req: NextRequest) {
         {
           error: `El pago fue enviado en ${currency}. Solo se aceptan pagos en monedas equivalentes al dólar (${SUPPORTED_STABLECOINS.join(
             ", "
-          )}). Contacta a soporte para revisión manual.`,
+          )}).`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 7. Regla estricta: NO se permite ningún pago menor al plan mínimo ($1.25 USD)
+    if (amountNum < MIN_ALLOWED_AMOUNT_USD) {
+      return NextResponse.json(
+        {
+          error: `El pago enviado en Binance es de $${amountNum.toFixed(
+            2
+          )} ${currency}, lo cual es menor al valor mínimo permitido de los planes ($${MIN_ALLOWED_AMOUNT_USD.toFixed(
+            2
+          )} USD). No se permiten recargas menores a $${MIN_ALLOWED_AMOUNT_USD.toFixed(2)} USD.`,
         },
         { status: 400 }
       );
@@ -192,50 +213,28 @@ export async function POST(req: NextRequest) {
     const payerUid = matchedTx.payerInfo?.binanceId || "";
 
     // =========================================================================
-    // MODO A: ACTIVACIÓN DIRECTA DE UN PLAN CON BINANCE PAY
+    // MODO A: COMPRA DIRECTA DE UN PLAN DE MEMBRESÍA CON BINANCE PAY
     // =========================================================================
-    if (mode === "PLAN" && planId) {
-      const plan = PLAN_PRICES[planId];
+    if (mode === "PLAN") {
+      const plan = planId ? PLAN_PRICES[planId] : null;
       if (!plan) {
-        return NextResponse.json({ error: "El plan seleccionado no es válido." }, { status: 400 });
+        return NextResponse.json({ error: "Selecciona un plan válido para activar." }, { status: 400 });
       }
 
-      const currentWallet = Number(user.walletBalance || 0);
-      const totalAvailable = Number((amountNum + currentWallet).toFixed(2));
-
-      if (amountNum < plan.priceUSD && totalAvailable < plan.priceUSD) {
-        // Si envió menos de lo que cuesta el plan y tampoco le alcanza sumando su Wallet,
-        // le acreditamos el monto a su Wallet para que no pierda su dinero y le avisamos cuánto le falta.
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: user.id },
-            data: { walletBalance: { increment: amountNum } },
-          }),
-          prisma.walletTransaction.create({
-            data: {
-              userId: user.id,
-              amount: amountNum,
-              type: "CREDIT",
-              description: `Binance Pay verificado (+$${amountNum.toFixed(
-                2
-              )} ${currency}) • OrderID: ${officialOrderId} • De: ${payerName} (${payerUid})`,
-            },
-          }),
-        ]);
-
-        const missing = (plan.priceUSD - totalAvailable).toFixed(2);
-        return NextResponse.json({
-          success: true,
-          partial: true,
-          message: `Recibimos tu pago de $${amountNum.toFixed(
-            2
-          )} ${currency} y lo acreditamos en tu Wallet. Para activar el ${
-            plan.name
-          } ($${plan.priceUSD.toFixed(2)} USD) solo te faltan $${missing} USD.`,
-        });
+      // Validar que el pago enviado NO sea menor al precio estipulado del plan
+      if (amountNum < plan.priceUSD) {
+        return NextResponse.json(
+          {
+            error: `El pago detectado en Binance Pay es de $${amountNum.toFixed(
+              2
+            )} ${currency}, pero el ${plan.name} tiene un valor estipulado de $${plan.priceUSD.toFixed(
+              2
+            )} USD. No se puede activar el plan por un valor menor al estipulado.`,
+          },
+          { status: 400 }
+        );
       }
 
-      // Calcular nueva expiración del plan
       const now = new Date();
       const currentExpires = user.subscription?.expiresAt
         ? new Date(user.subscription.expiresAt)
@@ -244,41 +243,38 @@ export async function POST(req: NextRequest) {
       const baseDate = isStillActive ? currentExpires : now;
       const newExpiresAt = new Date(baseDate.getTime() + plan.days * 24 * 60 * 60 * 1000);
 
-      // Diferencia a favor o a descontar de Wallet:
-      // nuevoSaldo = currentWallet + amountNum - plan.priceUSD
-      const walletDelta = Number((amountNum - plan.priceUSD).toFixed(2));
+      // Si pagó exactamente el plan, walletDelta es 0; si envió más, el excedente queda en su Wallet
+      const walletExcess = Number(Math.max(0, amountNum - plan.priceUSD).toFixed(2));
 
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: user.id },
-          data: {
-            walletBalance:
-              walletDelta >= 0
-                ? { increment: walletDelta }
-                : { decrement: Math.abs(walletDelta) },
-          },
-        }),
-        // Registro 1: Ingreso de Binance Pay (para métricas y alertas de recarga del Admin)
-        prisma.walletTransaction.create({
+      const updatedSub = await prisma.$transaction(async (tx) => {
+        if (walletExcess > 0) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: { walletBalance: { increment: walletExcess } },
+          });
+        }
+
+        await tx.walletTransaction.create({
           data: {
             userId: user.id,
             amount: amountNum,
             type: "CREDIT",
             description: `Binance Pay verificado (+$${amountNum.toFixed(
               2
-            )} ${currency}) • OrderID: ${officialOrderId} • TxID: ${officialTxId} • De: ${payerName}`,
+            )} ${currency}) • OrderID: ${officialOrderId} • TxID: ${officialTxId} • Pagador: ${payerName} (${payerUid})`,
           },
-        }),
-        // Registro 2: Activación del Plan
-        prisma.walletTransaction.create({
+        });
+
+        await tx.walletTransaction.create({
           data: {
             userId: user.id,
             amount: plan.priceUSD,
             type: "DEBIT",
-            description: `Activación directa con Binance Pay: ${plan.name} (+${plan.days} días • OrderID: ${officialOrderId})`,
+            description: `Compra de ${plan.name} con Binance Pay (+${plan.days} días • OrderID: ${officialOrderId})`,
           },
-        }),
-        prisma.subscription.upsert({
+        });
+
+        const sub = await tx.subscription.upsert({
           where: { userId: user.id },
           create: {
             userId: user.id,
@@ -297,53 +293,131 @@ export async function POST(req: NextRequest) {
             maxAccounts: plan.maxAccounts,
             updatedAt: now,
           },
-        }),
-      ]);
+        });
 
-      const extraMsg =
-        walletDelta > 0
-          ? ` El excedente de +$${walletDelta.toFixed(2)} USD quedó abonado a favor en tu Wallet.`
+        await tx.payment.create({
+          data: {
+            subscriptionId: sub.id,
+            amount: amountNum,
+            currency,
+            daysAdded: plan.days,
+            reference: officialOrderId,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: "BINANCE_PAY_PLAN_PURCHASE",
+            details: {
+              orderId: officialOrderId,
+              transactionId: officialTxId,
+              planId,
+              planName: plan.name,
+              amountPaid: amountNum,
+              currency,
+              payerName,
+              payerUid,
+            },
+          },
+        });
+
+        return sub;
+      });
+
+      const excessNote =
+        walletExcess > 0
+          ? ` El excedente de +$${walletExcess.toFixed(2)} USD se abonó a tu Wallet.`
           : "";
 
       return NextResponse.json({
         success: true,
-        message: `¡Pago Binance Pay verificado! Se activó tu ${plan.name} (+${plan.days} días) automáticamente.${extraMsg}`,
+        mode: "PLAN",
+        planName: plan.name,
+        daysAdded: plan.days,
+        amountPaid: amountNum,
+        currency,
+        orderId: officialOrderId,
+        expiresAt: updatedSub.expiresAt,
+        message: `¡Has comprado tu ${plan.name} exitosamente! Se sumaron +${plan.days} día(s) a tu suscripción activa.${excessNote}`,
       });
     }
 
     // =========================================================================
     // MODO B: RECARGA DE SALDO A LA WALLET DEL USUARIO
     // =========================================================================
-    await prisma.$transaction([
-      prisma.user.update({
+    if (amountNum < expectedAmount) {
+      return NextResponse.json(
+        {
+          error: `Seleccionaste recargar $${expectedAmount.toFixed(
+            2
+          )} USD, pero el pago enviado en Binance Pay fue de $${amountNum.toFixed(
+            2
+          )} ${currency}. No puedes recargar menos del valor seleccionado.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
         where: { id: user.id },
         data: {
           walletBalance: { increment: amountNum },
         },
-      }),
-      prisma.walletTransaction.create({
+      });
+
+      await tx.walletTransaction.create({
         data: {
           userId: user.id,
           amount: amountNum,
           type: "CREDIT",
           description: `Binance Pay verificado (+$${amountNum.toFixed(
             2
-          )} ${currency}) • OrderID: ${officialOrderId} • TxID: ${officialTxId} • De: ${payerName}`,
+          )} ${currency}) • OrderID: ${officialOrderId} • TxID: ${officialTxId} • Pagador: ${payerName} (${payerUid})`,
         },
-      }),
-    ]);
+      });
 
-    const updatedBalance = Number(user.walletBalance || 0) + amountNum;
+      if (user.subscription?.id) {
+        await tx.payment.create({
+          data: {
+            subscriptionId: user.subscription.id,
+            amount: amountNum,
+            currency,
+            daysAdded: 0,
+            reference: officialOrderId,
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "BINANCE_PAY_WALLET_RECHARGE",
+          details: {
+            orderId: officialOrderId,
+            transactionId: officialTxId,
+            amountPaid: amountNum,
+            currency,
+            payerName,
+            payerUid,
+          },
+        },
+      });
+    });
+
+    const updatedBalance = Number((Number(user.walletBalance || 0) + amountNum).toFixed(2));
 
     return NextResponse.json({
       success: true,
-      amountAdded: amountNum,
+      mode: "WALLET",
+      amountPaid: amountNum,
       currency,
       orderId: officialOrderId,
       newBalance: updatedBalance,
-      message: `¡Pago verificado en Binance Pay! Se acreditaron +$${amountNum.toFixed(
+      message: `¡Recarga exitosa para tu Wallet! Se acreditaron +$${amountNum.toFixed(
         2
-      )} USD (${currency}) en tu Wallet al instante. Nuevo saldo: $${updatedBalance.toFixed(2)} USD.`,
+      )} USD (${currency}) en tu billetera. Nuevo saldo disponible: $${updatedBalance.toFixed(2)} USD.`,
     });
   } catch (error: any) {
     console.error("Error en verificación automática de Binance Pay:", error);

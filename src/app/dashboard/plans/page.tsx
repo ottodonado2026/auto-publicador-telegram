@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import ClientSidebar from "@/components/ClientSidebar";
 import { useTheme } from "@/context/ThemeContext";
 import {
   CreditCard, CheckCircle2, Clock,
-  Send, Tag, Wallet, ArrowUpRight, AlertCircle, History, PlusCircle,
-  X, PhoneCall, KeyRound, HelpCircle, Copy, Check, ShieldCheck, Sparkles
+  Send, Tag, Wallet, AlertCircle, History, PlusCircle,
+  X, PhoneCall, KeyRound, HelpCircle, Copy, Check, ShieldCheck, Sparkles, Loader2
 } from "lucide-react";
 
 const BINANCE_UID = "1158258762";
 const BINANCE_USERNAME = "streamofi";
+const MIN_RECHARGE_USD = 1.25;
 
 const CLIENT_PLANS = [
   {
@@ -95,6 +97,14 @@ const CLIENT_PLANS = [
   },
 ];
 
+const STIPULATED_AMOUNTS = [
+  { label: "$1.25 (Plan 1 Día)", value: 1.25 },
+  { label: "$3.00 (Cuenta Extra)", value: 3.00 },
+  { label: "$7.00 (Plan 7 Días)", value: 7.00 },
+  { label: "$13.50 (Plan 15 Días)", value: 13.50 },
+  { label: "$24.00 (Plan 30 Días)", value: 24.00 },
+];
+
 export default function ClientPlansPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -105,15 +115,27 @@ export default function ClientPlansPage() {
   const [purchasing, setPurchasing] = useState(false);
   const [purchasingAddon, setPurchasingAddon] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
-  const [topupAmount, setTopupAmount] = useState<number>(10);
+  const [topupAmount, setTopupAmount] = useState<number>(7.00);
+  const [topupInputStr, setTopupInputStr] = useState<string>("7.00");
 
-  // Modal de Binance Pay (Verificación Automática por Order ID)
+  // Modal de Binance Pay con pasos animados: FORM -> VERIFYING -> SUCCESS
   const [showBinanceModal, setShowBinanceModal] = useState(false);
+  const [binanceStep, setBinanceStep] = useState<"FORM" | "VERIFYING" | "SUCCESS">("FORM");
   const [binanceMode, setBinanceMode] = useState<"WALLET" | "PLAN">("WALLET");
   const [binancePlan, setBinancePlan] = useState<any>(CLIENT_PLANS[1]);
   const [binanceOrderId, setBinanceOrderId] = useState("");
-  const [verifyingBinance, setVerifyingBinance] = useState(false);
-  const [binanceResult, setBinanceResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [binanceError, setBinanceError] = useState<string | null>(null);
+  const [binanceSuccessData, setBinanceSuccessData] = useState<{
+    mode: "WALLET" | "PLAN";
+    title: string;
+    subtitle: string;
+    amountPaid: number;
+    currency: string;
+    orderId: string;
+    planName?: string;
+    daysAdded?: number;
+    newBalance?: number;
+  } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Modal de Explicación + Compra + Vinculación de Cuenta Adicional de Telegram
@@ -149,58 +171,91 @@ export default function ClientPlansPage() {
 
   const openBinanceModalForWallet = () => {
     setBinanceMode("WALLET");
+    setBinanceStep("FORM");
     setBinanceOrderId("");
-    setBinanceResult(null);
+    setBinanceError(null);
+    setBinanceSuccessData(null);
     setShowBinanceModal(true);
   };
 
   const openBinanceModalForPlan = (plan: any) => {
     setBinanceMode("PLAN");
     setBinancePlan(plan);
+    setBinanceStep("FORM");
     setBinanceOrderId("");
-    setBinanceResult(null);
+    setBinanceError(null);
+    setBinanceSuccessData(null);
     setShowBinanceModal(true);
   };
 
+  const parsedTopup = parseFloat(topupInputStr);
+  const isAmountTooLow = isNaN(parsedTopup) || parsedTopup < MIN_RECHARGE_USD;
+
   const handleVerifyBinancePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBinanceResult(null);
+    setBinanceError(null);
 
     if (!binanceOrderId.trim()) {
-      setBinanceResult({
-        ok: false,
-        text: "Ingresa el Order ID (ID de la Orden) de tu comprobante de Binance Pay.",
-      });
+      setBinanceError("Ingresa el Order ID (ID de la Orden) de tu comprobante de Binance Pay.");
       return;
     }
 
+    if (binanceMode === "WALLET" && isAmountTooLow) {
+      setBinanceError(
+        `No puedes recargar menos de $${MIN_RECHARGE_USD.toFixed(
+          2
+        )} USD. Debes recargar exactamente el valor de alguno de los planes o un monto superior.`
+      );
+      return;
+    }
+
+    // Mostrar pantalla animada "Comprobando tu pago..."
+    setBinanceStep("VERIFYING");
+
     try {
-      setVerifyingBinance(true);
-      const res = await fetch("/api/wallet/binance-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: binanceOrderId.trim(),
-          mode: binanceMode,
-          planId: binanceMode === "PLAN" ? binancePlan?.id : undefined,
+      // Pequeña pausa visual mínima para que se aprecie la animación de comprobación
+      const [res] = await Promise.all([
+        fetch("/api/wallet/binance-verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: binanceOrderId.trim(),
+            mode: binanceMode,
+            planId: binanceMode === "PLAN" ? binancePlan?.id : undefined,
+            expectedAmount: binanceMode === "WALLET" ? parsedTopup : binancePlan?.priceUSD,
+          }),
         }),
-      });
+        new Promise((resolve) => setTimeout(resolve, 1600)),
+      ]);
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "No se pudo verificar el pago en Binance Pay");
       }
 
-      setBinanceResult({ ok: true, text: data.message });
+      await fetchUserData();
+
+      setBinanceSuccessData({
+        mode: data.mode || binanceMode,
+        title:
+          (data.mode || binanceMode) === "PLAN"
+            ? "¡Has Comprado tu Plan Exitosamente!"
+            : "¡Recarga Exitosa para tu Wallet!",
+        subtitle: data.message,
+        amountPaid: Number(data.amountPaid || 0),
+        currency: data.currency || "USDT",
+        orderId: data.orderId || binanceOrderId.trim(),
+        planName: data.planName,
+        daysAdded: data.daysAdded,
+        newBalance: data.newBalance,
+      });
+
       setFeedback({ message: data.message, isError: false });
       setBinanceOrderId("");
-      await fetchUserData();
+      setBinanceStep("SUCCESS");
     } catch (err: any) {
-      setBinanceResult({
-        ok: false,
-        text: err.message || "Error al verificar el Order ID en Binance Pay",
-      });
-    } finally {
-      setVerifyingBinance(false);
+      setBinanceStep("FORM");
+      setBinanceError(err.message || "Error al verificar el Order ID en Binance Pay");
     }
   };
 
@@ -221,6 +276,20 @@ export default function ClientPlansPage() {
 
       setFeedback({ message: data.message, isError: false });
       await fetchUserData();
+
+      // Mostrar también el modal de éxito de compra de plan
+      setBinanceSuccessData({
+        mode: "PLAN",
+        title: "¡Has Comprado tu Plan Exitosamente!",
+        subtitle: data.message,
+        amountPaid: plan.priceUSD,
+        currency: "USD (Wallet)",
+        orderId: `WALLET-${Date.now().toString().slice(-6)}`,
+        planName: plan.name,
+        daysAdded: plan.days,
+      });
+      setBinanceStep("SUCCESS");
+      setShowBinanceModal(true);
     } catch (err: any) {
       setFeedback({ message: err.message, isError: true });
     } finally {
@@ -354,21 +423,24 @@ export default function ClientPlansPage() {
 
               <div className="flex flex-col items-start sm:items-end">
                 <span className="text-[11px] text-neutral-300 font-semibold mb-1">
-                  Monto sugerido a recargar:
+                  Valores estipulados de planes:
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {[1.25, 7, 13.5, 24].map((amt) => (
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setTopupAmount(amt)}
+                      onClick={() => {
+                        setTopupAmount(amt);
+                        setTopupInputStr(amt.toFixed(2));
+                      }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                         topupAmount === amt
-                          ? "bg-yellow-500 text-black shadow-md"
+                          ? "bg-[#F3BA2F] text-black shadow-md"
                           : "bg-white/10 text-neutral-300 hover:bg-white/20"
                       }`}
                     >
-                      +${amt}
+                      ${amt.toFixed(2)}
                     </button>
                   ))}
                 </div>
@@ -384,7 +456,7 @@ export default function ClientPlansPage() {
                 <button
                   type="button"
                   onClick={openBinanceModalForWallet}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#F3BA2F] hover:bg-[#e5ad24] text-black text-xs font-black rounded-2xl shadow-lg shadow-yellow-500/20 transition-all whitespace-nowrap cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#F3BA2F] hover:bg-[#e5ad24] text-black text-xs font-black rounded-2xl shadow-lg shadow-yellow-500/20 transition-all whitespace-nowrap cursor-pointer"
                 >
                   <span>₿ Recargar con Binance Pay</span>
                 </button>
@@ -639,7 +711,7 @@ export default function ClientPlansPage() {
                 Recarga tu Wallet o Activa tu Plan al Instante con Binance Pay
               </h3>
               <p className={`text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-600"}`}>
-                Envía el monto en <strong>USDT, USDC o FDUSD</strong> a nuestro Binance ID oficial <strong className="font-mono text-[#F3BA2F]">{BINANCE_UID}</strong> (verifica que el nombre de usuario sea <strong className="font-mono text-emerald-400">{BINANCE_USERNAME}</strong>). Luego haz clic en el botón amarillo e ingresa tu <strong>Order ID (ID de Orden)</strong> para que nuestro sistema verifique y acredite tu pago automáticamente.
+                Envía exactamente el valor del plan (mínimo <strong>$1.25 USDT</strong>) a nuestro Binance ID oficial <strong className="font-mono text-[#F3BA2F]">{BINANCE_UID}</strong> (verifica que el nombre de usuario sea <strong className="font-mono text-emerald-400">{BINANCE_USERNAME}</strong>). Luego ingresa tu <strong>Order ID (ID de Orden)</strong> para comprobar y acreditar tu pago automáticamente.
               </p>
             </div>
 
@@ -657,219 +729,386 @@ export default function ClientPlansPage() {
         </div>
 
         {/* ===================================================================== */}
-        {/* MODAL DE VERIFICACIÓN AUTOMÁTICA DE BINANCE PAY POR ORDER ID          */}
+        {/* MODAL INTERACTIVO DE BINANCE PAY (FORM -> VERIFYING -> SUCCESS)       */}
         {/* ===================================================================== */}
         {showBinanceModal && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
             <div className={`w-full max-w-xl rounded-3xl p-6 sm:p-7 border-2 shadow-2xl relative my-8 ${
               isDark ? "bg-[#171B22] border-[#F3BA2F]/50 text-white" : "bg-white border-[#F3BA2F] text-slate-900"
             }`}>
-              <button
-                type="button"
-                onClick={() => setShowBinanceModal(false)}
-                className="absolute top-5 right-5 p-2 rounded-xl bg-black/20 hover:bg-black/40 text-neutral-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-3.5 mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-[#F3BA2F] text-black flex items-center justify-center font-black text-2xl shadow-md flex-shrink-0">
-                  ₿
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#F3BA2F] block">
-                    Verificación Automática en Tiempo Real
-                  </span>
-                  <h2 className="text-lg sm:text-xl font-black">
-                    Pagar con Binance Pay (Cripto)
-                  </h2>
-                </div>
-              </div>
-
-              {/* Selector de Destino del Pago */}
-              <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-black/25 border border-white/10 mb-5">
+              {binanceStep !== "VERIFYING" && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setBinanceMode("WALLET");
-                    setBinanceResult(null);
-                  }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    binanceMode === "WALLET"
-                      ? "bg-[#F3BA2F] text-black shadow-md"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
+                  onClick={() => setShowBinanceModal(false)}
+                  className="absolute top-5 right-5 p-2 rounded-xl bg-black/20 hover:bg-black/40 text-neutral-400 hover:text-white cursor-pointer"
                 >
-                  💼 Recargar Saldo a mi Wallet
+                  <X className="w-4 h-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBinanceMode("PLAN");
-                    setBinanceResult(null);
-                  }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    binanceMode === "PLAN"
-                      ? "bg-[#F3BA2F] text-black shadow-md"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  ⚡ Activar un Plan Directo
-                </button>
-              </div>
+              )}
 
-              {binanceMode === "PLAN" && (
-                <div className="mb-5">
-                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
-                    Selecciona el plan que vas a pagar:
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {CLIENT_PLANS.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setBinancePlan(p)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          binancePlan?.id === p.id
-                            ? "bg-[#F3BA2F]/20 border-[#F3BA2F] text-white"
-                            : isDark
-                            ? "bg-[#12151B] border-[#2D3340] text-neutral-400"
-                            : "bg-slate-100 border-slate-300 text-slate-700"
-                        }`}
-                      >
-                        <div className="text-[11px] font-black truncate">{p.days} Día(s)</div>
-                        <div className="text-sm font-black font-mono text-[#F3BA2F]">
-                          ${p.priceUSD.toFixed(2)}
+              {/* PASO 1: FORMULARIO DE INSTRUCCIONES Y ORDER ID */}
+              {binanceStep === "FORM" && (
+                <>
+                  <div className="flex items-center gap-3.5 mb-5">
+                    <div className="w-12 h-12 rounded-2xl bg-[#F3BA2F] text-black flex items-center justify-center font-black text-2xl shadow-md flex-shrink-0">
+                      ₿
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#F3BA2F] block">
+                        Verificación Automática en Tiempo Real
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-black">
+                        Pagar con Binance Pay (Cripto)
+                      </h2>
+                    </div>
+                  </div>
+
+                  {/* Selector de Destino del Pago */}
+                  <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-black/25 border border-white/10 mb-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBinanceMode("WALLET");
+                        setBinanceError(null);
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        binanceMode === "WALLET"
+                          ? "bg-[#F3BA2F] text-black shadow-md"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      💼 Recargar Saldo a mi Wallet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBinanceMode("PLAN");
+                        setBinanceError(null);
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        binanceMode === "PLAN"
+                          ? "bg-[#F3BA2F] text-black shadow-md"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      ⚡ Activar un Plan Directo
+                    </button>
+                  </div>
+
+                  {/* Selección de Monto Estipulado (WALLET) o Plan (PLAN) */}
+                  {binanceMode === "WALLET" ? (
+                    <div className="mb-5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+                        Selecciona el valor estipulado a recargar (Mínimo $1.25 USD):
+                      </label>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {STIPULATED_AMOUNTS.map((item) => (
+                          <button
+                            key={item.value}
+                            type="button"
+                            onClick={() => {
+                              setTopupAmount(item.value);
+                              setTopupInputStr(item.value.toFixed(2));
+                              setBinanceError(null);
+                            }}
+                            className={`px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer ${
+                              Number(topupInputStr) === item.value
+                                ? "bg-[#F3BA2F]/20 border-[#F3BA2F] text-[#F3BA2F]"
+                                : isDark
+                                ? "bg-[#12151B] border-[#2D3340] text-neutral-300"
+                                : "bg-slate-100 border-slate-300 text-slate-700"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative">
+                        <span className="text-xs font-black text-[#F3BA2F] absolute left-3.5 top-1/2 -translate-y-1/2">
+                          $
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="1.25"
+                          value={topupInputStr}
+                          onChange={(e) => {
+                            setTopupInputStr(e.target.value);
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v)) setTopupAmount(v);
+                          }}
+                          className={`w-full pl-8 pr-16 py-2.5 rounded-xl border text-sm font-mono font-black focus:outline-none ${
+                            isAmountTooLow
+                              ? "border-red-500 bg-red-500/10 text-red-400"
+                              : isDark
+                              ? "bg-[#12151B] border-[#2D3340] text-white"
+                              : "bg-slate-50 border-slate-300 text-slate-900"
+                          }`}
+                        />
+                        <span className="text-[11px] font-bold text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2">
+                          USDT
+                        </span>
+                      </div>
+
+                      {isAmountTooLow && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-[11px] font-bold flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                          <span>
+                            No se permite recargar menos de ${MIN_RECHARGE_USD.toFixed(2)} USD (valor mínimo estipulado en los planes).
+                          </span>
                         </div>
-                      </button>
-                    ))}
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mb-5">
+                      <label className="block text-[11px] font-extrabold uppercase tracking-wider text-neutral-400 mb-2">
+                        Selecciona el plan que vas a comprar (debes enviar el valor exacto):
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {CLIENT_PLANS.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setBinancePlan(p);
+                              setBinanceError(null);
+                            }}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                              binancePlan?.id === p.id
+                                ? "bg-[#F3BA2F]/20 border-[#F3BA2F] text-white"
+                                : isDark
+                                ? "bg-[#12151B] border-[#2D3340] text-neutral-400"
+                                : "bg-slate-100 border-slate-300 text-slate-700"
+                            }`}
+                          >
+                            <div className="text-[11px] font-black truncate">{p.days} Día(s)</div>
+                            <div className="text-sm font-black font-mono text-[#F3BA2F]">
+                              ${p.priceUSD.toFixed(2)}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Paso 1: Datos de la cuenta receptora */}
+                  <div className={`p-4 rounded-2xl border mb-4 ${
+                    isDark ? "bg-[#12151B] border-[#2D3340]" : "bg-slate-50 border-slate-300"
+                  }`}>
+                    <div className="text-[11px] font-black uppercase tracking-wider text-[#F3BA2F] mb-2.5">
+                      Paso 1: Envía el valor exacto en Binance Pay a nuestra cuenta
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isDark ? "bg-[#191D24] border-[#2D3340]" : "bg-white border-slate-200"
+                      }`}>
+                        <div>
+                          <span className="text-[10px] font-bold text-neutral-400 block">
+                            Binance ID (UID Receptor)
+                          </span>
+                          <span className="text-base font-black font-mono text-[#F3BA2F]">
+                            {BINANCE_UID}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(BINANCE_UID, "uid")}
+                          className="px-2.5 py-1.5 rounded-lg bg-[#F3BA2F]/20 hover:bg-[#F3BA2F]/30 text-[#F3BA2F] text-xs font-black flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedField === "uid" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedField === "uid" ? "Copiado" : "Copiar"}</span>
+                        </button>
+                      </div>
+
+                      <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isDark ? "bg-[#191D24] border-[#2D3340]" : "bg-white border-slate-200"
+                      }`}>
+                        <div>
+                          <span className="text-[10px] font-bold text-neutral-400 block">
+                            Usuario Oficial Receptor
+                          </span>
+                          <span className="text-base font-black font-mono text-emerald-400">
+                            {BINANCE_USERNAME}
+                          </span>
+                        </div>
+                        <span className="px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black">
+                          ✓ Verificado
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-neutral-400">
+                        Monedas: <strong className="text-white">USDT, USDC o FDUSD</strong>
+                      </span>
+                      <span className="font-black text-[#F3BA2F]">
+                        Monto exacto a enviar: $
+                        {binanceMode === "PLAN"
+                          ? binancePlan?.priceUSD.toFixed(2)
+                          : isAmountTooLow
+                          ? MIN_RECHARGE_USD.toFixed(2)
+                          : parsedTopup.toFixed(2)}{" "}
+                        USDT
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Paso 2: Instrucciones del Order ID */}
+                  <div className={`p-4 rounded-2xl border mb-4 text-xs space-y-1.5 ${
+                    isDark ? "bg-[#12151B] border-[#2D3340] text-neutral-300" : "bg-slate-50 border-slate-300 text-slate-700"
+                  }`}>
+                    <div className="text-[11px] font-black uppercase tracking-wider text-[#229ED9] mb-1">
+                      Paso 2: Copia el Order ID (ID de la Orden) de tu comprobante
+                    </div>
+                    <p>1. Verifica que al enviar a <strong>{BINANCE_UID}</strong> aparezca nuestro usuario <strong className="text-emerald-400">{BINANCE_USERNAME}</strong>.</p>
+                    <p>2. Recuerda que <strong>no se permite enviar un monto menor</strong> al valor estipulado del plan.</p>
+                    <p>3. En el comprobante de pago de Binance Pay copia el <strong>ID de la orden (Order ID)</strong> (ej: <code className="font-mono text-[#F3BA2F]">459634021363236864</code>) y pégalo aquí abajo.</p>
+                  </div>
+
+                  {/* Formulario de Verificación */}
+                  <form onSubmit={handleVerifyBinancePayment} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-black mb-1.5">
+                        Order ID (ID de la Orden de Binance Pay):
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej: 459634021363236864"
+                        value={binanceOrderId}
+                        onChange={(e) => setBinanceOrderId(e.target.value)}
+                        className={`w-full px-4 py-3 rounded-xl border text-sm font-mono font-black tracking-wider focus:outline-none focus:ring-2 focus:ring-[#F3BA2F]/40 ${
+                          isDark
+                            ? "bg-[#12151B] border-[#2D3340] text-white placeholder:text-neutral-500"
+                            : "bg-slate-50 border-slate-300 text-slate-900"
+                        }`}
+                      />
+                    </div>
+
+                    {binanceError && (
+                      <div className="p-3.5 rounded-xl border bg-red-500/15 border-red-500/30 text-red-400 text-xs font-bold flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>{binanceError}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={binanceMode === "WALLET" && isAmountTooLow}
+                      className="w-full py-3.5 px-5 bg-[#F3BA2F] hover:bg-[#e5ad24] text-black text-xs font-black rounded-2xl shadow-lg shadow-yellow-500/20 transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>
+                        {binanceMode === "PLAN"
+                          ? `⚡ Comprobar Pago y Activar ${binancePlan?.name} ($${binancePlan?.priceUSD.toFixed(2)})`
+                          : `⚡ Comprobar Pago y Acreditar $${isAmountTooLow ? MIN_RECHARGE_USD.toFixed(2) : parsedTopup.toFixed(2)} USD en mi Wallet`}
+                      </span>
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {/* PASO 2: ANIMACIÓN DE "COMPROBANDO TU PAGO..." */}
+              {binanceStep === "VERIFYING" && (
+                <div className="py-12 px-4 text-center space-y-5">
+                  <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full border-4 border-[#F3BA2F]/20 border-t-[#F3BA2F] animate-spin" />
+                    <div className="absolute inset-2 rounded-full border-4 border-[#229ED9]/20 border-b-[#229ED9] animate-spin" />
+                    <div className="w-14 h-14 rounded-2xl bg-[#F3BA2F] text-black flex items-center justify-center font-black text-3xl shadow-lg">
+                      ₿
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F3BA2F]/20 text-[#F3BA2F] text-[10px] font-black uppercase tracking-widest">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Conectando con Binance Pay
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black">
+                      Comprobando tu pago...
+                    </h3>
+                    <p className={`text-xs max-w-sm mx-auto leading-relaxed ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+                      Estamos verificando el Order ID <strong className="font-mono text-[#F3BA2F]">{binanceOrderId}</strong> en la cuenta oficial <strong className="text-emerald-400">{BINANCE_USERNAME}</strong> y registrando tu operación en la base de datos.
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Paso 1: Datos de la cuenta receptora */}
-              <div className={`p-4 rounded-2xl border mb-4 ${
-                isDark ? "bg-[#12151B] border-[#2D3340]" : "bg-slate-50 border-slate-300"
-              }`}>
-                <div className="text-[11px] font-black uppercase tracking-wider text-[#F3BA2F] mb-2.5">
-                  Paso 1: Envía el pago desde tu App de Binance → Binance Pay
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Binance UID */}
-                  <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                    isDark ? "bg-[#191D24] border-[#2D3340]" : "bg-white border-slate-200"
-                  }`}>
-                    <div>
-                      <span className="text-[10px] font-bold text-neutral-400 block">
-                        Binance ID (UID Receptor)
-                      </span>
-                      <span className="text-base font-black font-mono text-[#F3BA2F]">
-                        {BINANCE_UID}
-                      </span>
+              {/* PASO 3: ANIMACIÓN DE ÉXITO (RECARGA EXITOSA O PLAN COMPRADO EXITOSAMENTE) */}
+              {binanceStep === "SUCCESS" && binanceSuccessData && (
+                <div className="py-8 px-2 text-center space-y-5">
+                  <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                    <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center shadow-2xl shadow-emerald-500/40">
+                      <CheckCircle2 className="w-11 h-11" />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(BINANCE_UID, "uid")}
-                      className="px-2.5 py-1.5 rounded-lg bg-[#F3BA2F]/20 hover:bg-[#F3BA2F]/30 text-[#F3BA2F] text-xs font-black flex items-center gap-1 cursor-pointer"
-                    >
-                      {copiedField === "uid" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedField === "uid" ? "Copiado" : "Copiar"}</span>
-                    </button>
                   </div>
 
-                  {/* Usuario de Binance */}
-                  <div className={`p-3 rounded-xl border flex items-center justify-between ${
-                    isDark ? "bg-[#191D24] border-[#2D3340]" : "bg-white border-slate-200"
-                  }`}>
-                    <div>
-                      <span className="text-[10px] font-bold text-neutral-400 block">
-                        Nombre de Usuario (Nickname)
-                      </span>
-                      <span className="text-base font-black font-mono text-emerald-400">
-                        {BINANCE_USERNAME}
-                      </span>
-                    </div>
-                    <span className="px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black">
-                      ✓ Verificado
+                  <div className="space-y-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
+                      ✓ PAGO CONFIRMADO Y GUARDADO
                     </span>
+                    <h3 className="text-xl sm:text-2xl font-black text-emerald-400">
+                      {binanceSuccessData.title}
+                    </h3>
+                    <p className={`text-xs max-w-md mx-auto leading-relaxed ${isDark ? "text-neutral-300" : "text-slate-600"}`}>
+                      {binanceSuccessData.subtitle}
+                    </p>
                   </div>
-                </div>
 
-                <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span className="text-neutral-400">
-                    Monedas aceptadas: <strong className="text-white">USDT, USDC o FDUSD</strong>
-                  </span>
-                  <span className="font-black text-[#F3BA2F]">
-                    {binanceMode === "PLAN"
-                      ? `Monto exacto a enviar: $${binancePlan?.priceUSD.toFixed(2)} USDT`
-                      : "Envía el monto en USDT que desees recargar"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Paso 2: Instrucciones del Order ID */}
-              <div className={`p-4 rounded-2xl border mb-4 text-xs space-y-1.5 ${
-                isDark ? "bg-[#12151B] border-[#2D3340] text-neutral-300" : "bg-slate-50 border-slate-300 text-slate-700"
-              }`}>
-                <div className="text-[11px] font-black uppercase tracking-wider text-[#229ED9] mb-1">
-                  Paso 2: ¿Dónde encuentro mi Order ID (ID de la Orden)?
-                </div>
-                <p>1. Asegúrate de enviar a <strong>{BINANCE_UID}</strong> y que en pantalla aparezca el usuario <strong className="text-emerald-400">{BINANCE_USERNAME}</strong>.</p>
-                <p>2. Una vez completado el envío, en el comprobante de Binance Pay copia el <strong>ID de la orden (Order ID)</strong> (es un número largo de ~18 dígitos, ej: <code className="font-mono text-[#F3BA2F]">459634021363236864</code>).</p>
-                <p>3. Pégalo aquí abajo y presiona <strong>Verificar Pago</strong>.</p>
-              </div>
-
-              {/* Formulario de Verificación */}
-              <form onSubmit={handleVerifyBinancePayment} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-black mb-1.5">
-                    Ingresa el Order ID (ID de la Orden) de tu pago en Binance Pay:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: 459634021363236864"
-                    value={binanceOrderId}
-                    onChange={(e) => setBinanceOrderId(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border text-sm font-mono font-black tracking-wider focus:outline-none focus:ring-2 focus:ring-[#F3BA2F]/40 ${
-                      isDark
-                        ? "bg-[#12151B] border-[#2D3340] text-white placeholder:text-neutral-500"
-                        : "bg-slate-50 border-slate-300 text-slate-900"
-                    }`}
-                  />
-                </div>
-
-                {binanceResult && (
-                  <div className={`p-3.5 rounded-xl border text-xs font-bold flex items-start gap-2.5 ${
-                    binanceResult.ok
-                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                      : "bg-red-500/15 border-red-500/30 text-red-400"
+                  <div className={`p-4 rounded-2xl border text-left text-xs space-y-2 max-w-md mx-auto ${
+                    isDark ? "bg-[#12151B] border-[#2D3340]" : "bg-slate-50 border-slate-300"
                   }`}>
-                    {binanceResult.ok ? (
-                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Order ID Verificado:</span>
+                      <span className="font-mono font-black text-[#F3BA2F]">{binanceSuccessData.orderId}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Monto Confirmado:</span>
+                      <span className="font-mono font-black text-emerald-400">
+                        +${binanceSuccessData.amountPaid.toFixed(2)} {binanceSuccessData.currency}
+                      </span>
+                    </div>
+                    {binanceSuccessData.mode === "PLAN" && binanceSuccessData.planName && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-400">Plan Activado:</span>
+                        <span className="font-black text-[#229ED9]">
+                          {binanceSuccessData.planName} (+{binanceSuccessData.daysAdded} días)
+                        </span>
+                      </div>
                     )}
-                    <span>{binanceResult.text}</span>
+                    {binanceSuccessData.mode === "WALLET" && binanceSuccessData.newBalance !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-400">Nuevo Saldo en Wallet:</span>
+                        <span className="font-mono font-black text-white">
+                          ${Number(binanceSuccessData.newBalance).toFixed(2)} USD
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={verifyingBinance}
-                  className="w-full py-3.5 px-5 bg-[#F3BA2F] hover:bg-[#e5ad24] text-black text-xs font-black rounded-2xl shadow-lg shadow-yellow-500/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>
-                    {verifyingBinance
-                      ? "Consultando pago en Binance Pay..."
-                      : binanceMode === "PLAN"
-                      ? `⚡ Verificar Pago y Activar ${binancePlan?.name}`
-                      : "⚡ Verificar Pago y Acreditar Saldo en mi Wallet"}
-                  </span>
-                </button>
-              </form>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                    {binanceSuccessData.mode === "PLAN" ? (
+                      <Link
+                        href="/dashboard/campaigns"
+                        onClick={() => setShowBinanceModal(false)}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition-all"
+                      >
+                        🚀 Ir a Mis Campañas Ahora
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowBinanceModal(false)}
+                        className="w-full sm:w-auto px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition-all cursor-pointer"
+                      >
+                        ✓ Usar mi Saldo para Activar un Plan
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
