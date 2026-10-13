@@ -9,7 +9,7 @@ import {
   Plus, Pause, AlertCircle, Clock, 
   CheckCircle2, MessageSquare, Activity, 
   RefreshCw, Rocket, XCircle, Users, Edit3, Timer, BookmarkCheck,
-  ChevronLeft, ChevronRight, Moon, Zap
+  ChevronLeft, ChevronRight, Moon, Zap, BookOpen, Smartphone
 } from "lucide-react";
 
 function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, nowMs: number) {
@@ -25,7 +25,7 @@ function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, 
   const mins = Math.floor((diffSec % 3600) / 60);
   const secs = diffSec % 60;
   if (hrs > 0) {
-    return `${hrs}h ${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
+    return `${hrs * 60 + mins}m ${String(secs).padStart(2, "0")}s`;
   }
   return `${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
 }
@@ -67,9 +67,9 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchDashboard();
-    // Sincronización silenciosa en vivo cada 8 segundos para reflejar cada grupo publicado sin recargar la página
+    // Sincronización silenciosa en vivo cada 8 segundos
     const pollInterval = setInterval(fetchDashboard, 8000);
-    // Reloj en tiempo real (1 segundo) para la barra de conteo regresivo (59s, 58s, 57s... y descanso)
+    // Reloj en tiempo real (1 segundo) para conteo regresivo de 60s y de descanso
     const clockInterval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => {
       clearInterval(pollInterval);
@@ -144,15 +144,18 @@ export default function ClientDashboard() {
   const activeCampaigns = allCampaigns.filter((c: any) => c.status === "ACTIVE");
   const pausedCampaigns = allCampaigns.filter((c: any) => c.status !== "ACTIVE");
   const sessionUser = data?.user;
+  const telegramAccount = data?.telegramAccount;
   const isExpired = !membership?.hasAccess;
   const maxAllowedActive = sessionUser?.subscription?.maxCampaigns || 2;
+  const maxGroupsAllowed =
+    maxAllowedActive >= 8 ? 9999 : maxAllowedActive >= 5 ? 100 : maxAllowedActive >= 3 ? 50 : 25;
   const todaySentCount = data?.todaySentCount || 0;
   const maxDailyPosts = data?.maxDailyPosts || 100;
   const dailyLimitReached = todaySentCount >= maxDailyPosts;
 
   // Métricas agregadas
   const totalGroups = activeCampaigns.reduce(
-    (acc: number, c: any) => acc + (Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 1),
+    (acc: number, c: any) => acc + (Array.isArray(c.targetGroupIds) ? new Set(c.targetGroupIds).size : 1),
     0
   );
   const totalSent = allCampaigns.reduce((acc: number, c: any) => acc + (c._count?.logs || 0), 0);
@@ -166,7 +169,7 @@ export default function ClientDashboard() {
       <main className="flex-1 ml-64 p-4 sm:p-8 max-w-6xl w-full mx-auto">
         {loading && !data ? (
           <div className="space-y-6">
-            <div className="h-16 rounded-3xl bg-neutral-700/20 animate-pulse" />
+            <div className="h-28 rounded-3xl bg-neutral-700/20 animate-pulse" />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="h-24 rounded-2xl bg-neutral-700/20 animate-pulse" />
               <div className="h-24 rounded-2xl bg-neutral-700/20 animate-pulse" />
@@ -176,9 +179,9 @@ export default function ClientDashboard() {
           </div>
         ) : (
           <>
-            {/* Banner de Membresía */}
-            {isExpired ? (
-              <div className="mb-8 p-6 bg-red-500/10 border border-red-500/30 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            {/* Banner de Membresía Vencida (si aplica) */}
+            {isExpired && (
+              <div className="mb-6 p-5 bg-red-500/10 border border-red-500/30 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-3.5 text-red-400">
                   <AlertCircle className="w-6 h-6 flex-shrink-0" />
                   <div>
@@ -195,122 +198,107 @@ export default function ClientDashboard() {
                   Recargar Membresía
                 </Link>
               </div>
-            ) : (
-              <div className={`mb-6 p-5 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md ${
-                isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-              }`}>
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold flex-shrink-0">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className={`text-[10px] font-extrabold uppercase tracking-wider block ${
-                      isDark ? "text-neutral-400" : "text-neutral-500"
-                    }`}>
-                      Suscripción en Piloto Automático 24/7
-                    </span>
-                    <span className="text-sm sm:text-base font-black">
-                      {membership?.daysRemaining} día(s) restantes • Cupo: {activeCampaigns.length} de {maxAllowedActive} campañas activas
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  {pausedCampaigns.length > 0 && (
-                    <Link
-                      href="/dashboard/campaigns?tab=LIBRARY"
-                      className="text-xs font-bold px-3.5 py-2 rounded-xl bg-[#229ED9]/15 text-[#229ED9] border border-[#229ED9]/30 hover:bg-[#229ED9]/25 transition-all"
-                    >
-                      Mis Copys en Biblioteca ({allCampaigns.length})
-                    </Link>
-                  )}
-                  <Link
-                    href="/dashboard/plans"
-                    className="text-xs font-bold text-emerald-400 hover:underline"
-                  >
-                    Ampliar plan →
-                  </Link>
-                </div>
-              </div>
             )}
 
-            {/* Métricas del Dashboard */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className={`p-4 rounded-2xl border shadow-sm ${
-                isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-              }`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Campañas Activas (En Vivo)</span>
-                  <Activity className="w-4 h-4 text-[#229ED9]" />
-                </div>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-black">{activeCampaigns.length}</span>
-                  <span className="text-xs text-neutral-400 font-bold">/ {maxAllowedActive} permitidas</span>
-                </div>
-              </div>
-
-              <div className={`p-4 rounded-2xl border shadow-sm ${
-                isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-              }`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Grupos Asignados Hoy</span>
-                  <Users className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-2xl font-black mt-1">
-                  {totalGroups}
-                </div>
-              </div>
-
-              <div className={`p-4 rounded-2xl border shadow-sm ${
-                isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-              }`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-neutral-400 uppercase">Publicaciones Hoy / Plan</span>
-                  <Rocket className="w-4 h-4 text-purple-400" />
-                </div>
-                <div className="flex items-baseline justify-between mt-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black">{todaySentCount}</span>
-                    <span className="text-xs text-emerald-400 font-bold">/ {maxDailyPosts} hoy</span>
+            {/* CABECERA ESTILO CENTRO DE CONTROL AUTO-PUBLICADOR */}
+            <div className="mb-6 rounded-3xl p-6 bg-gradient-to-br from-[#0D131F] via-[#131B2B] to-[#0E1724] border border-[#24324A] shadow-2xl text-white">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-white/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-[#0EA5E9] to-[#2563EB] flex items-center justify-center shadow-[0_0_25px_rgba(14,165,233,0.4)] flex-shrink-0">
+                    <Rocket className="w-7 h-7 text-white" />
                   </div>
-                  <span className="text-[11px] text-neutral-400 font-semibold">
-                    Total: {totalSent}
-                  </span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                        Auto-Publicador en Grupos de Telegram
+                      </h1>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                        telegramAccount?.status === "CONNECTED" || !isExpired
+                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                          : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                      }`}>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        {telegramAccount?.status === "CONNECTED" ? "CONECTADO" : "GRANJA 24/7 ACTIVA"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1 font-medium">
+                      Cuenta:{" "}
+                      <strong className="text-[#38BDF8]">
+                        {telegramAccount?.firstName || sessionUser?.storeName || sessionUser?.name || "OttBot Cloud"}
+                      </strong>{" "}
+                      ({telegramAccount?.phoneNumber || sessionUser?.phoneNumber || "Nube 24/7"})
+                      {telegramAccount?.username ? ` · @${telegramAccount.username}` : ""} •{" "}
+                      <span className="text-emerald-400 font-bold">
+                        {membership?.daysRemaining ?? 0} día(s) de vigencia
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Resumen Diario de Envíos */}
+                <div className="flex items-center gap-3 bg-[#090E17]/80 px-4 py-2.5 rounded-2xl border border-[#1E2D45]">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Publicaciones de Hoy
+                    </span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-emerald-400 font-mono">{todaySentCount}</span>
+                      <span className="text-xs text-slate-400 font-bold">/ {maxDailyPosts} máx. hoy</span>
+                    </div>
+                  </div>
+                  <div className="h-8 w-px bg-white/10 mx-1" />
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Campañas Activas
+                    </span>
+                    <div className="text-sm font-black text-[#38BDF8]">
+                      {activeCampaigns.length} de {maxAllowedActive}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Header de Campañas Activas */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                  Mis Campañas Activas & Envíos en Vivo
-                </h1>
-                <p className={`text-xs font-semibold mt-1 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                  El conteo regresivo y las últimas publicaciones se actualizan automáticamente en vivo sin necesidad de recargar la página.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
+              {/* Barra de Botones Rápidos (Estilo Centro de Control) */}
+              <div className="pt-4 flex flex-wrap items-center gap-2.5">
                 <button
+                  type="button"
                   onClick={fetchDashboard}
-                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    isDark 
-                      ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:text-white" 
-                      : "bg-white border-neutral-300 text-neutral-700 hover:text-black"
-                  }`}
-                  title="Sincronizar ahora"
+                  className="px-4 py-2.5 rounded-xl bg-[#162032] hover:bg-[#1E2B42] border border-[#2B3B55] text-xs font-extrabold text-white flex items-center gap-2 transition-all cursor-pointer"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#229ED9]" />
-                  <span className="hidden sm:inline">Sincronizar</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-[#38BDF8]" />
+                  <span>Refrescar</span>
                 </button>
 
                 <Link
+                  href="/dashboard/guide"
+                  className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-xs font-extrabold text-amber-400 flex items-center gap-2 transition-all"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Guía de Uso & Reglas</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/telegram"
+                  className="px-4 py-2.5 rounded-xl bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 text-xs font-extrabold text-[#38BDF8] flex items-center gap-2 transition-all"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Sincronizar Grupos / Cuentas TG</span>
+                </Link>
+
+                <Link
+                  href="/dashboard/campaigns?tab=LIBRARY"
+                  className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/40 text-xs font-extrabold text-purple-300 flex items-center gap-2 transition-all"
+                >
+                  <BookmarkCheck className="w-3.5 h-3.5" />
+                  <span>Biblioteca de Copys ({allCampaigns.length})</span>
+                </Link>
+
+                <Link
                   href="/dashboard/campaigns"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+                  className="ml-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#10B981] hover:opacity-95 text-xs font-black text-white shadow-lg shadow-teal-500/25 flex items-center gap-2 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Crear / Ver Copys ({allCampaigns.length})</span>
+                  <span>Crear Nuevo Copy / Campaña</span>
                 </Link>
               </div>
             </div>
@@ -348,7 +336,7 @@ export default function ClientDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 {activeCampaigns
                   .slice((campaignPage - 1) * campaignsPerPage, campaignPage * campaignsPerPage)
                   .map((c: any) => {
@@ -366,7 +354,7 @@ export default function ClientDashboard() {
                     // Contar cuántos logs pertenecen a la ronda actual (últimos targetCount minutos)
                     const currentRoundWindowMs = targetCount * 65 * 1000;
                     const logsInCurrentRound = logs.filter(
-                      (l: any) => nowMs - new Date(l.createdAt).getTime() <= currentRoundWindowMs
+                      (l: any) => l.status === "SENT" && nowMs - new Date(l.createdAt).getTime() <= currentRoundWindowMs
                     ).length;
 
                     const isManualBroadcasting = broadcastingId === c.id;
@@ -388,10 +376,10 @@ export default function ClientDashboard() {
                     const restSecondsLeft = Math.max(0, Math.floor((nextRunTargetMs - nowMs) / 1000));
                     const restCountdownText = formatRestCountdown(c.nextRunAt, c.intervalMinutes || 60, nowMs);
 
-                    // Porcentaje de la barra regresiva (De 100% hacia 0% de adelante hacia atrás)
+                    // Porcentaje de la barra regresiva (De 100% hacia 0%)
                     const reverseBarPercent = isAutoSendingRound
-                      ? Math.max(4, Math.round((groupSecondsLeft / 60) * 100))
-                      : Math.min(100, Math.max(4, Math.round((restSecondsLeft / totalRestSec) * 100)));
+                      ? Math.max(5, Math.round((groupSecondsLeft / 60) * 100))
+                      : Math.min(100, Math.max(6, Math.round((restSecondsLeft / totalRestSec) * 100)));
 
                     // Paginación de "Últimos Grupos donde se Publicó" (5 grupos por página)
                     const currentLogPage = logPageByCampaign[c.id] || 1;
@@ -402,121 +390,86 @@ export default function ClientDashboard() {
                       safeLogPage * logsPerPage
                     );
 
+                    const lastBroadcastFormatted = logs[0]?.createdAt
+                      ? new Date(logs[0].createdAt).toLocaleString()
+                      : "En espera de ciclo";
+
                     return (
                       <div
                         key={c.id}
-                        className={`rounded-3xl p-5 sm:p-6 border shadow-xl transition-all ${
-                          isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-                        }`}
+                        className="rounded-3xl p-5 sm:p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white transition-all"
                       >
                         {/* Cabecera de la Campaña con todos los botones alineados en una sola fila */}
-                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4">
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-5">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2.5">
-                              <h2 className="text-base sm:text-lg font-black tracking-tight truncate">
+                              <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
                                 {c.name}
                               </h2>
-                              {isAutoSendingRound ? (
-                                <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                  Publicando en Vivo ({Math.min(logsInCurrentRound + 1, targetCount)}/{targetCount} grupos)
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                  <Moon className="w-3 h-3 text-amber-400" />
-                                  En Descanso ({c.intervalMinutes} min)
-                                </span>
-                              )}
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                Activa 24/7 Nube
+                              </span>
                             </div>
-                            <p className={`text-xs mt-1 truncate ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
-                              Grupos seleccionados: <strong>{targetCount}</strong> ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
+                            <p className="text-xs text-slate-400 mt-1 truncate">
+                              Grupos en esta campaña: <strong className="text-white">{targetCount}</strong> ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
                             </p>
                           </div>
 
-                          {/* Fila Única Alineada: Reloj + Editar + Adelantar Ronda + Pausar */}
-                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-shrink-0">
-                            {/* Reloj Regresivo Compacto */}
-                            <div className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-mono font-black whitespace-nowrap ${
-                              isAutoSendingRound
-                                ? isDark
-                                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400"
-                                  : "bg-emerald-50 border-emerald-300 text-emerald-700"
-                                : isDark
-                                ? "bg-[#15181E] border-amber-500/30 text-amber-400"
-                                : "bg-amber-50 border-amber-300 text-amber-700"
-                            }`}>
-                              <Timer className="w-3.5 h-3.5 flex-shrink-0 animate-spin" style={{ animationDuration: "8s" }} />
-                              <div>
-                                <span className="text-[9px] uppercase block font-sans font-bold text-neutral-400 leading-none">
-                                  {isAutoSendingRound ? "Siguiente grupo:" : "En Descanso:"}
-                                </span>
-                                <span>{isAutoSendingRound ? `${groupSecondsLeft}s` : restCountdownText}</span>
-                              </div>
-                            </div>
-
-                            {/* Botón Editar */}
+                          {/* Fila Única Alineada: Editar + Pausar 24/7 Nube + Ronda Manual */}
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 flex-shrink-0">
                             <Link
                               href={`/dashboard/campaigns?edit=${c.id}`}
-                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all whitespace-nowrap ${
-                                isDark
-                                  ? "bg-[#171A20] hover:bg-[#252A34] text-[#229ED9] border-[#2D3340]"
-                                  : "bg-neutral-50 hover:bg-neutral-100 text-[#229ED9] border-neutral-300"
-                              }`}
+                              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-[#162032] hover:bg-[#1E2C44] text-[#38BDF8] border border-[#293B58] transition-all whitespace-nowrap"
                               title="Editar copy, foto o seleccionar grupos"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
-                              <span>Editar</span>
+                              <span>Editar Copy / Grupos</span>
                             </Link>
 
-                            {/* Botón Adelantar Ronda (o Ronda Extra +$1 USD si agotó límite diario) */}
+                            <button
+                              type="button"
+                              disabled={actionLoading === c.id}
+                              onClick={() => toggleCampaign(c.id, c.status)}
+                              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-rose-950/50 hover:bg-rose-900/60 text-rose-400 border border-rose-500/40 transition-all cursor-pointer whitespace-nowrap"
+                              title="Pausar esta campaña 24/7"
+                            >
+                              <Pause className="w-3.5 h-3.5" />
+                              <span>Pausar 24/7 Nube</span>
+                            </button>
+
                             {dailyLimitReached ? (
                               <button
                                 type="button"
                                 disabled={isManualBroadcasting}
                                 onClick={() => handleTriggerBroadcast(c.id, true)}
-                                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-md transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
                                 title="Lanzar una ronda extra hoy por $1.00 USD desde tu Wallet"
                               >
                                 <Zap className="w-3.5 h-3.5 text-white" />
-                                <span>+1 Ronda Extra ($1)</span>
+                                <span>+1 Ronda Extra ($1 USD)</span>
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 disabled={isManualBroadcasting}
                                 onClick={() => handleTriggerBroadcast(c.id, false)}
-                                className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
-                                title="Emitir ronda ahora mismo"
+                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#10B981] hover:opacity-95 text-white shadow-lg shadow-teal-500/20 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                title="Ejecutar ronda inmediata en todos los grupos de esta campaña"
                               >
                                 {isManualBroadcasting ? (
                                   <>
                                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    <span>Emitiendo ({groupSecondsLeft}s)...</span>
+                                    <span>Publicando ({groupSecondsLeft}s)...</span>
                                   </>
                                 ) : (
                                   <>
                                     <Rocket className="w-3.5 h-3.5 text-white" />
-                                    <span>Adelantar Ronda</span>
+                                    <span>Ronda Manual ({targetCount} Grupos)</span>
                                   </>
                                 )}
                               </button>
                             )}
-
-                            {/* Botón Pausar (Alineado en la misma fila horizontal) */}
-                            <button
-                              type="button"
-                              disabled={actionLoading === c.id}
-                              onClick={() => toggleCampaign(c.id, c.status)}
-                              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
-                                isDark
-                                  ? "bg-[#171A20] hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30 text-neutral-300 border-[#2D3340]"
-                                  : "bg-neutral-100 hover:bg-red-50 hover:text-red-600 text-neutral-700 border-neutral-300"
-                              }`}
-                              title="Pausar esta campaña"
-                            >
-                              <Pause className="w-3.5 h-3.5" />
-                              <span>Pausar</span>
-                            </button>
                           </div>
                         </div>
 
@@ -548,84 +501,100 @@ export default function ClientDashboard() {
                           </div>
                         )}
 
-                        {/* Barra de Progreso en Conteo Regresivo (De Adelante hacia Atrás: 100% -> 0%) */}
-                        <div className={`rounded-2xl p-4 border mb-3 ${
-                          isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-[#F8FAFC] border-neutral-200"
-                        }`}>
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs mb-2">
-                            <span className="font-bold flex items-center gap-1.5 text-[#229ED9]">
-                              <Activity className="w-4 h-4 animate-pulse" />
-                              {isAutoSendingRound ? (
-                                <span>
-                                  Publicando en grupos — Próximo grupo en:{" "}
-                                  <strong className="text-emerald-400 font-mono text-sm">{groupSecondsLeft}s</strong> (60s → 0s)
+                        {/* CAJA CENTRAL DE ESTADO Y BARRA DE PROGRESO (IDÉNTICA AL SISTEMA DE REFERENCIA) */}
+                        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-[#091E2E] via-[#0B2535] to-[#0A2629] border border-cyan-500/40 shadow-inner mb-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
+                            <div>
+                              <div className="flex items-center gap-2 text-sm font-black text-white">
+                                <span className={`w-2.5 h-2.5 rounded-full ${
+                                  isAutoSendingRound ? "bg-emerald-400 animate-ping" : "bg-[#38BDF8]"
+                                }`} />
+                                <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-xs">
+                                  {isAutoSendingRound ? "▶" : "⏸"}
                                 </span>
-                              ) : (
-                                <span>
-                                  Campaña en Descanso ({c.intervalMinutes} min) — Próxima ronda en:{" "}
-                                  <strong className="text-amber-400 font-mono text-sm">{restCountdownText}</strong>
-                                </span>
-                              )}
-                            </span>
+                                {isAutoSendingRound ? (
+                                  <span>
+                                    Emitiendo Ronda en Vivo · ({Math.min(logsInCurrentRound + 1, targetCount)} de {targetCount} grupos en secuencia)
+                                  </span>
+                                ) : (
+                                  <span>
+                                    Ronda Completada · Descanso de Seguridad ({targetCount} de {targetCount} enviados)
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-[#38BDF8] mt-1 font-medium">
+                                {isAutoSendingRound
+                                  ? `Publicando grupo por grupo con pausa antibaneo. Siguiente grupo en ${groupSecondsLeft} segundos.`
+                                  : "Todos los grupos recibieron publicidad con éxito. Pausa anti-ban antes de la siguiente ronda."}
+                              </p>
+                            </div>
 
-                            <span className="font-extrabold text-emerald-400 font-mono text-xs">
-                              {sentCount} envíos ({reverseBarPercent}% restante del ciclo)
-                            </span>
+                            {/* Píldora Derecha de Conteo Regresivo en Vivo */}
+                            <div className="px-4 py-2 rounded-xl bg-[#071824] border border-emerald-500/40 flex items-center gap-2 text-xs sm:text-sm font-mono font-black text-emerald-400 whitespace-nowrap self-start sm:self-center shadow-md">
+                              <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-[10px]">
+                                {isAutoSendingRound ? "⏱" : "⏸"}
+                              </span>
+                              <span>
+                                {isAutoSendingRound
+                                  ? `Siguiente grupo: ${groupSecondsLeft}s`
+                                  : `Descanso: ${restCountdownText}`}
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Barra que disminuye en vivo de 100% a 0% */}
-                          <div className={`w-full h-3 rounded-full overflow-hidden p-0.5 ${
-                            isDark ? "bg-[#252A34]" : "bg-neutral-200"
-                          }`}>
-                            <div 
-                              className={`h-full rounded-full transition-all duration-1000 ease-linear ${
-                                isAutoSendingRound
-                                  ? "bg-gradient-to-r from-emerald-500 via-[#229ED9] to-sky-400 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
-                                  : "bg-gradient-to-r from-[#229ED9] to-amber-500"
-                              }`}
+                          {/* Barra de Progreso Cyan -> Esmeralda en Tiempo Real */}
+                          <div className="w-full h-2.5 rounded-full bg-[#06131E] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-[#0284C7] via-[#0EA5E9] to-[#10B981] transition-all duration-1000 ease-linear shadow-[0_0_12px_rgba(16,185,129,0.5)]"
                               style={{ width: `${reverseBarPercent}%` }}
                             />
                           </div>
+                        </div>
 
-                          <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] mt-3 pt-2.5 border-t font-semibold ${
-                            isDark ? "border-[#2D3340] text-neutral-400" : "border-neutral-200 text-neutral-600"
-                          }`}>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                              <span>
-                                Intervalo entre grupos:{" "}
-                                <strong className="text-emerald-400 font-mono">
-                                  {isAutoSendingRound ? `${groupSecondsLeft}s / 60s` : "60s → 0s (Antibaneo)"}
-                                </strong>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-amber-400" />
-                              <span>
-                                Ciclo de descanso: <strong>Cada {c.intervalMinutes} min</strong>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 sm:justify-end">
-                              <span className="w-2 h-2 rounded-full bg-[#229ED9]" />
-                              <span>
-                                Estado:{" "}
-                                <strong className={isAutoSendingRound ? "text-emerald-400" : "text-amber-400"}>
-                                  {isAutoSendingRound ? "Emitiendo ronda..." : `Descansando (${restCountdownText})`}
-                                </strong>
-                              </span>
-                            </div>
+                        {/* 4 CAJAS DE MÉTRICAS INFERIORES (GRUPOS DETECTADOS / ACTIVOS / INTERVALO / ÚLTIMA DIFUSIÓN) */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                              Cupo de Grupos Plan
+                            </span>
+                            <span className="text-lg sm:text-xl font-black text-white mt-0.5 block">
+                              {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                              Grupos Activos
+                            </span>
+                            <span className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 block">
+                              {targetCount} de {maxGroupsAllowed >= 9999 ? targetCount : maxGroupsAllowed}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                              Intervalo Anti-Ban
+                            </span>
+                            <span className="text-lg sm:text-xl font-black text-[#38BDF8] mt-0.5 block font-mono">
+                              {isAutoSendingRound ? `${groupSecondsLeft}s – 60s` : "55s – 90s"}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                              Última Difusión ({sentCount} envíos)
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-white mt-1.5 block truncate">
+                              {lastBroadcastFormatted}
+                            </span>
                           </div>
                         </div>
 
                         {/* Últimos Grupos donde se Publicó — Paginado cada 5 grupos */}
                         {logs.length > 0 && (
-                          <div className={`p-3.5 rounded-2xl border ${
-                            isDark ? "bg-[#15181E] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
-                          }`}>
+                          <div className="p-3.5 rounded-2xl bg-[#0B101B] border border-[#1E2A40]">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                              <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                                isDark ? "text-neutral-400" : "text-neutral-500"
-                              }`}>
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                                 Últimos Grupos donde se Publicó (Mostrando {(safeLogPage - 1) * logsPerPage + 1}-{Math.min(safeLogPage * logsPerPage, logs.length)} de {logs.length})
                               </span>
 
@@ -641,17 +610,13 @@ export default function ClientDashboard() {
                                         [c.id]: Math.max(1, safeLogPage - 1),
                                       }))
                                     }
-                                    className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer ${
-                                      isDark
-                                        ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:border-[#229ED9]"
-                                        : "bg-white border-neutral-300 text-neutral-700"
-                                    }`}
+                                    className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
                                   >
                                     <ChevronLeft className="w-3 h-3" />
                                     <span>Anterior</span>
                                   </button>
 
-                                  <span className="text-[10px] font-black px-1.5 text-[#229ED9]">
+                                  <span className="text-[10px] font-black px-1.5 text-[#38BDF8]">
                                     Pág. {safeLogPage}/{totalLogPages}
                                   </span>
 
@@ -664,11 +629,7 @@ export default function ClientDashboard() {
                                         [c.id]: Math.min(totalLogPages, safeLogPage + 1),
                                       }))
                                     }
-                                    className={`px-2 py-1 rounded-lg border text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer ${
-                                      isDark
-                                        ? "bg-[#1E2229] border-[#2D3340] text-neutral-300 hover:border-[#229ED9]"
-                                        : "bg-white border-neutral-300 text-neutral-700"
-                                    }`}
+                                    className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
                                   >
                                     <span>Siguiente</span>
                                     <ChevronRight className="w-3 h-3" />
@@ -681,15 +642,13 @@ export default function ClientDashboard() {
                               {paginatedLogs.map((log: any) => (
                                 <div 
                                   key={log.id}
-                                  className={`flex items-center justify-between text-xs p-2.5 rounded-xl border ${
-                                    isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-200"
-                                  }`}
+                                  className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#131B2A] border border-[#223049]"
                                 >
                                   <div className="flex items-center gap-1.5 truncate pr-1.5">
                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                      log.status === "SENT" ? "bg-emerald-500" : "bg-red-500"
+                                      log.status === "SENT" ? "bg-emerald-400" : "bg-red-500"
                                     }`} />
-                                    <span className="font-bold truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
+                                    <span className="font-bold text-white truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
                                       {log.targetGroupName || log.targetGroupId}
                                     </span>
                                   </div>
@@ -697,7 +656,7 @@ export default function ClientDashboard() {
                                     <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
                                       ✓
                                     </span>
-                                    <span className="text-[10px] text-neutral-500 font-mono">
+                                    <span className="text-[10px] text-slate-400 font-mono">
                                       {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                   </div>

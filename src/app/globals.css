@@ -10,24 +10,29 @@ html.sidebar-collapsed {
   --sidebar-width: 5rem;
 }
 
-/* Ajuste inteligente del margen principal según estado del Sidebar (Expandido / Colapsado / Móvil) */
+/* Centrado simétrico automático del contenido principal respecto al espacio libre junto al Sidebar */
 @media (min-width: 1024px) {
   .ml-64 {
-    margin-left: var(--sidebar-width) !important;
-    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: calc(var(--sidebar-width) + 2.25rem) !important;
+    padding-right: 2.25rem !important;
+    max-width: calc(74rem + var(--sidebar-width)) !important;
+    transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 @media (max-width: 1023px) {
   .ml-64 {
     margin-left: 0 !important;
+    margin-right: 0 !important;
     padding-top: 5rem !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
   }
 }
 
-/* Estilos de Tema Oscuro y Claro pulidos con alto contraste */
+/* Estilos de Tema Oscuro y Tema Claro Suave (Descanso Visual / Sin Brillo Incómodo) */
 html.dark {
   --bg-app: #12151B;
   --bg-surface: #1E2229;
@@ -39,13 +44,29 @@ html.dark {
 }
 
 html:not(.dark) {
-  --bg-app: #E9ECF0;
-  --bg-surface: #FFFFFF;
-  --bg-inner: #F8FAFC;
-  --border-color: #CBD5E1;
+  --bg-app: #DCE3EC;
+  --bg-surface: #EEF2F7;
+  --bg-inner: #E3E9F0;
+  --border-color: #C4CFDF;
   --text-main: #0F172A;
-  --text-muted: #64748B;
+  --text-muted: #475569;
   --text-heading: #0F172A;
+}
+
+/* Suavizar blancos puros en modo claro para evitar fatiga visual */
+html:not(.dark) .bg-\[\#E9ECF0\] {
+  background-color: #DCE3EC !important;
+}
+
+html:not(.dark) .bg-white {
+  background-color: #EEF2F7 !important;
+  border-color: #C5D0DE !important;
+}
+
+html:not(.dark) .bg-neutral-50,
+html:not(.dark) .bg-\[\#F8FAFC\] {
+  background-color: #E3E9F2 !important;
+  border-color: #CBD5E1 !important;
 }
 
 body {

@@ -102,7 +102,9 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
       >
         {/* Parte Superior: Brand Header + Wallet + Navegación */}
         <div>
-          <div className={`h-20 flex items-center ${collapsed ? "lg:justify-center lg:px-2" : "justify-between px-4"} border-b border-[#2B303C] relative`}>
+          <div className={`${
+            collapsed ? "lg:flex-col lg:justify-center lg:py-3.5 lg:px-2 lg:h-auto lg:gap-2.5" : "h-20 justify-between px-4"
+          } flex items-center border-b border-[#2B303C] relative`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-sky-400 shadow-[0_4px_16px_rgba(34,158,217,0.4)] flex-shrink-0 animate-float">
                 <img src="/ottbot-logo.png" alt="OttBot Logo" className="w-full h-full object-cover" />
@@ -120,7 +122,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
               </div>
             </div>
 
-            {/* Botón Colapsar / Expandir en PC */}
+            {/* Botón Colapsar / Expandir en PC (Debajo del logo cuando está recogido) */}
             <button
               type="button"
               onClick={toggleCollapse}

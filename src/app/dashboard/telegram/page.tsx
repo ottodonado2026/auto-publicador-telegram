@@ -294,10 +294,10 @@ export default function ClientTelegramPage() {
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-lg font-black">{accountInfo?.firstName || "Mi Cuenta Telegram"}</h2>
                       <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">
-                        Conectado
+                        Conectado ({(sessionUser?.telegramAccounts || []).filter((a: any) => a.status === "CONNECTED").length} de {sessionUser?.subscription?.maxAccounts || 1} permitidas)
                       </span>
                     </div>
                     <p className={`text-xs font-mono mt-0.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
@@ -306,7 +306,7 @@ export default function ClientTelegramPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleLoadGroups}
@@ -320,20 +320,53 @@ export default function ClientTelegramPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("¿Deseas desvincular o conectar otro número?")) {
-                        setStep("PHONE");
-                      }
+                      setPhoneNumber("");
+                      setPhoneCode("");
+                      setStep("PHONE");
                     }}
-                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                    className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       isDark 
-                        ? "bg-[#171A20] border-[#2D3340] text-neutral-400 hover:text-white" 
-                        : "bg-neutral-100 border-neutral-300 text-neutral-700 hover:text-black"
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25" 
+                        : "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
                     }`}
                   >
-                    Cambiar Cuenta
+                    + Vincular Otra / Cambiar Cuenta
                   </button>
                 </div>
               </div>
+
+              {/* Si tiene varias cuentas conectadas, listarlas todas */}
+              {(sessionUser?.telegramAccounts || []).filter((a: any) => a.status === "CONNECTED").length > 1 && (
+                <div className="pt-4 pb-2 border-b border-[#2D3340]/40">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 block mb-2">
+                    Tus Cuentas de Telegram Activas en Rotación:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {(sessionUser?.telegramAccounts || [])
+                      .filter((a: any) => a.status === "CONNECTED")
+                      .map((acc: any, idx: number) => (
+                        <div
+                          key={acc.id}
+                          className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                            isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
+                          }`}
+                        >
+                          <div>
+                            <span className="font-black block">
+                              Cuenta #{idx + 1}: {acc.firstName || "Telegram"}
+                            </span>
+                            <span className="text-[11px] font-mono text-neutral-400">
+                              {acc.phoneNumber} {acc.username ? `(@${acc.username})` : ""}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                            ● Activa
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
 
               {/* Lista de Grupos Detectados */}
               <div className="pt-6">

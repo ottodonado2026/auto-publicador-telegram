@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import ClientSidebar from "@/components/ClientSidebar";
 import { useTheme } from "@/context/ThemeContext";
 import { 
-  CreditCard, CheckCircle2, Clock, Sparkles, 
-  ShieldCheck, Zap, Send, Tag, Wallet, ArrowUpRight, AlertCircle, History, PlusCircle
+  CreditCard, CheckCircle2, Clock, 
+  ShieldCheck, Send, Tag, Wallet, ArrowUpRight, AlertCircle, History, PlusCircle,
+  X, PhoneCall, KeyRound, HelpCircle, Users
 } from "lucide-react";
 
 const CLIENT_PLANS = [
@@ -103,6 +104,14 @@ export default function ClientPlansPage() {
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
   const [topupAmount, setTopupAmount] = useState<number>(10);
 
+  // Modal de Explicación + Compra + Vinculación de Cuenta Adicional de Telegram
+  const [showAddonModal, setShowAddonModal] = useState(false);
+  const [modalPhone, setModalPhone] = useState("");
+  const [modalCode, setModalCode] = useState("");
+  const [modalStep, setModalStep] = useState<"INFO" | "PHONE" | "CODE" | "SUCCESS">("INFO");
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
   const fetchUserData = async () => {
     try {
       const res = await fetch("/api/auth/me");
@@ -144,8 +153,8 @@ export default function ClientPlansPage() {
     }
   };
 
-  const handleBuyExtraAccount = async () => {
-    setFeedback(null);
+  const handleUnlockExtraAccountInModal = async () => {
+    setModalError(null);
     setPurchasingAddon(true);
 
     try {
@@ -161,15 +170,61 @@ export default function ClientPlansPage() {
 
       setFeedback({ message: data.message, isError: false });
       await fetchUserData();
+      // Pasar automáticamente al formulario para vincular el nuevo número de Telegram
+      setModalStep("PHONE");
     } catch (err: any) {
-      setFeedback({ message: err.message, isError: true });
+      setModalError(err.message);
     } finally {
       setPurchasingAddon(false);
     }
   };
 
+  const handleModalSendCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    setModalLoading(true);
+    try {
+      const res = await fetch("/api/telegram/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: modalPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al enviar código a Telegram");
+      setModalStep("CODE");
+    } catch (err: any) {
+      setModalError(err.message || "Error al conectar con Telegram");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleModalVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    setModalLoading(true);
+    try {
+      const res = await fetch("/api/telegram/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: modalPhone, phoneCode: modalCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Código inválido o expirado");
+      await fetchUserData();
+      setModalStep("SUCCESS");
+    } catch (err: any) {
+      setModalError(err.message || "Error al verificar el código");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   const walletBalance = Number(sessionUser?.walletBalance || 0);
   const transactions = sessionUser?.walletTransactions || [];
+  const linkedAccounts = (sessionUser?.telegramAccounts || []).filter((a: any) => a.status === "CONNECTED");
+  const maxAccountsAllowed = sessionUser?.subscription?.maxAccounts || 1;
+  const hasFreeAccountSlot = linkedAccounts.length < maxAccountsAllowed;
 
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${
@@ -177,7 +232,7 @@ export default function ClientPlansPage() {
     }`}>
       <ClientSidebar user={sessionUser} membership={membership} />
 
-      <main className="flex-1 ml-64 p-8 max-w-6xl w-full mx-auto">
+      <main className="flex-1 ml-64 p-6 sm:p-8 max-w-6xl w-full mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
             Mi Billetera (Wallet) & Planes de Membresía
@@ -271,9 +326,9 @@ export default function ClientPlansPage() {
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#229ED9]">
                   Suscripción en Curso
                 </span>
-                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap ${
                   membership?.hasAccess
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    ? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
                     : "bg-red-500/20 text-red-400 border border-red-500/30"
                 }`}>
                   {membership?.hasAccess ? "Activa 24/7" : "Expirada"}
@@ -304,14 +359,16 @@ export default function ClientPlansPage() {
               </div>
               <div className="flex items-center justify-between font-bold">
                 <span>Cuentas Telegram:</span>
-                <span className="text-emerald-400">Hasta {sessionUser?.subscription?.maxAccounts || 1} cuenta(s)</span>
+                <span className="text-emerald-500">
+                  {linkedAccounts.length} vinculada(s) / Hasta {maxAccountsAllowed} cuenta(s)
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ADD-ON: CUENTA ADICIONAL DE TELEGRAM POR $3.00 USD PAGO ÚNICO */}
-        <div className={`mb-8 rounded-3xl p-6 border-2 border-dashed flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md ${
+        {/* ADD-ON: CUENTA ADICIONAL DE TELEGRAM POR $3.00 USD PAGO ÚNICO (ALINEADO EN UNA SOLA FILA) */}
+        <div className={`mb-8 rounded-3xl p-6 border-2 border-dashed flex flex-col lg:flex-row lg:items-center justify-between gap-5 shadow-md ${
           isDark ? "bg-[#191D24] border-[#229ED9]/40" : "bg-sky-50/60 border-[#229ED9]/40"
         }`}>
           <div className="flex items-start sm:items-center gap-4">
@@ -319,28 +376,34 @@ export default function ClientPlansPage() {
               <PlusCircle className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <h3 className="text-sm sm:text-base font-black">
                   ¿Tienes el Pase Express o Semanal y quieres agregar otra Cuenta de Telegram?
                 </h3>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
-                  Pago Único
+                <span className="inline-flex items-center whitespace-nowrap flex-shrink-0 text-[10px] font-black px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 uppercase tracking-wider">
+                  ★ Pago Único ($3.00 USD)
                 </span>
               </div>
-              <p className={`text-xs mt-1 leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                Desbloquea <strong>+1 Cuenta Adicional de Telegram</strong> por solo <strong>$3.00 USD</strong>. Puedes usarla para publicar directamente desde tus números personales o alternar con nuestra Granja OttBot.
+              <p className={`text-xs mt-1.5 leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                Desbloquea <strong>+1 Cuenta Adicional de Telegram</strong> para vincular un segundo o tercer número telefónico en tu mismo panel. Así repartes tus grupos entre varias cuentas propias sin riesgo de saturación.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={purchasingAddon}
-            onClick={handleBuyExtraAccount}
-            className="px-5 py-3 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-[#229ED9]/25 transition-all whitespace-nowrap cursor-pointer disabled:opacity-50"
-          >
-            {purchasingAddon ? "Activando..." : "Adicionar +1 Cuenta TG ($3.00 USD)"}
-          </button>
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setModalError(null);
+                setModalStep("INFO");
+                setShowAddonModal(true);
+              }}
+              className="px-5 py-3 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-[#229ED9]/25 transition-all whitespace-nowrap cursor-pointer flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Adicionar +1 Cuenta TG ($3.00 USD)</span>
+            </button>
+          </div>
         </div>
 
         {/* Cuadrícula de 4 Planes (2x2) */}
@@ -375,7 +438,7 @@ export default function ClientPlansPage() {
                         {plan.description}
                       </p>
                     </div>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-[#229ED9]/15 text-[#229ED9]">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-[#229ED9]/15 text-[#229ED9] whitespace-nowrap">
                       +{plan.days} Días
                     </span>
                   </div>
@@ -388,13 +451,13 @@ export default function ClientPlansPage() {
                         <span className="text-3xl font-black">${plan.priceUSD.toFixed(2)}</span>
                         <span className="text-xs font-bold text-neutral-400">USD</span>
                       </div>
-                      <div className="text-xs font-bold text-emerald-400 mt-1 flex items-center gap-1">
+                      <div className="text-xs font-bold text-emerald-500 mt-1 flex items-center gap-1">
                         <Tag className="w-3.5 h-3.5" />
                         <span>Solo ${plan.dailyEquivalent.toFixed(2)} / día</span>
                       </div>
                     </div>
 
-                    <div className="text-right text-[11px] text-neutral-400 space-y-0.5">
+                    <div className="text-right text-[11px] text-neutral-500 space-y-0.5">
                       <div>Máx. <strong>{plan.maxGroups} grupos</strong></div>
                       <div><strong>{plan.maxDailyPosts} envíos</strong> / día</div>
                       <div>Hasta <strong>{plan.maxCampaigns} campañas</strong></div>
@@ -405,7 +468,7 @@ export default function ClientPlansPage() {
                   <div className="space-y-2 mb-5">
                     {plan.features.map((f, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-xs">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                         <span className={isDark ? "text-neutral-300" : "text-neutral-700"}>{f}</span>
                       </div>
                     ))}
@@ -448,7 +511,7 @@ export default function ClientPlansPage() {
           <div className={`mb-8 rounded-3xl p-6 border shadow-lg ${
             isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
           }`}>
-            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-emerald-400 mb-4">
+            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-emerald-500 mb-4">
               <History className="w-4 h-4" />
               <span>Movimientos Recientes de tu Wallet</span>
             </div>
@@ -467,7 +530,7 @@ export default function ClientPlansPage() {
                     </span>
                   </div>
                   <span className={`font-mono font-black text-sm ${
-                    tx.type === "CREDIT" ? "text-emerald-400" : "text-amber-400"
+                    tx.type === "CREDIT" ? "text-emerald-500" : "text-amber-500"
                   }`}>
                     {tx.type === "CREDIT" ? "+" : "-"}${Number(tx.amount).toFixed(2)} USD
                   </span>
@@ -490,10 +553,10 @@ export default function ClientPlansPage() {
             <div className={`p-4 rounded-2xl border ${
               isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
             }`}>
-              <span className="text-xs font-black block text-amber-400 mb-1">
+              <span className="text-xs font-black block text-amber-500 mb-1">
                 🟡 Binance Pay & Cripto (USDT)
               </span>
-              <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+              <p className="text-[11px] text-neutral-500 leading-relaxed font-mono">
                 Red: USDT (TRC20 / BEP20) o Binance Pay ID.<br />
                 Acreditación inmediata en tu Wallet o Plan.
               </p>
@@ -502,10 +565,10 @@ export default function ClientPlansPage() {
             <div className={`p-4 rounded-2xl border ${
               isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
             }`}>
-              <span className="text-xs font-black block text-emerald-400 mb-1">
+              <span className="text-xs font-black block text-emerald-500 mb-1">
                 🟢 Transferencia Local (Nequi / Bancolombia)
               </span>
-              <p className="text-[11px] text-neutral-400 leading-relaxed font-mono">
+              <p className="text-[11px] text-neutral-500 leading-relaxed font-mono">
                 Pago en pesos colombianos al cambio del día.<br />
                 Confirmación instantánea por comprobante.
               </p>
@@ -526,6 +589,222 @@ export default function ClientPlansPage() {
             </a>
           </div>
         </div>
+
+        {/* MODAL INTERACTIVO: EXPLICACIÓN + COMPRA + VINCULACIÓN DE CUENTA ADICIONAL DE TELEGRAM */}
+        {showAddonModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className={`w-full max-w-lg rounded-3xl p-6 sm:p-7 border shadow-2xl relative ${
+              isDark ? "bg-[#191D24] border-[#2D3340] text-white" : "bg-[#EEF2F7] border-slate-300 text-slate-900"
+            }`}>
+              <button
+                type="button"
+                onClick={() => setShowAddonModal(false)}
+                className="absolute top-5 right-5 p-2 rounded-xl bg-black/20 hover:bg-black/40 text-neutral-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#229ED9]/20 text-[#229ED9] flex items-center justify-center font-bold flex-shrink-0">
+                  <PlusCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-black">
+                      Adicionar +1 Cuenta de Telegram
+                    </h2>
+                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 uppercase whitespace-nowrap">
+                      $3.00 USD Pago Único
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Cupo actual: <strong>{linkedAccounts.length} vinculada(s)</strong> de <strong>{maxAccountsAllowed} permitida(s)</strong>
+                  </p>
+                </div>
+              </div>
+
+              {modalError && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
+              {modalStep === "INFO" && (
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-2xl border space-y-2.5 text-xs ${
+                    isDark ? "bg-[#12151B] border-[#2D3340]" : "bg-white border-slate-300"
+                  }`}>
+                    <div className="font-black text-[#229ED9] flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                      <HelpCircle className="w-4 h-4" />
+                      <span>¿Qué significa y cómo te beneficia agregar otra cuenta?</span>
+                    </div>
+                    <div className="flex items-start gap-2 leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Conecta un 2do o 3er número de teléfono:</strong> Puedes vincular otra cuenta personal o comercial de Telegram sin cerrar la primera.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Doble alcance y cero saturación:</strong> El sistema te permite publicar en los grupos de tu Cuenta 1 y de tu Cuenta 2 de forma independiente.
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2 leading-relaxed">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Cupo permanente:</strong> Pagas <strong>$3.00 USD una sola vez</strong> con el saldo de tu Wallet y el cupo extra queda desbloqueado en tu perfil.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Lista de cuentas ya vinculadas */}
+                  {linkedAccounts.length > 0 && (
+                    <div className={`p-3.5 rounded-2xl border text-xs ${
+                      isDark ? "bg-[#141820] border-[#2D3340]" : "bg-white border-slate-300"
+                    }`}>
+                      <span className="text-[10px] font-extrabold uppercase text-neutral-400 block mb-2">
+                        Cuentas actualmente vinculadas en tu panel:
+                      </span>
+                      <div className="space-y-1.5">
+                        {linkedAccounts.map((acc: any, idx: number) => (
+                          <div key={acc.id} className="flex items-center justify-between font-mono text-xs">
+                            <span>#{idx + 1} • {acc.firstName || "Telegram"} ({acc.phoneNumber})</span>
+                            <span className="text-[10px] font-black text-emerald-400">● CONECTADA</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      disabled={purchasingAddon}
+                      onClick={handleUnlockExtraAccountInModal}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black shadow-lg shadow-blue-500/25 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {purchasingAddon
+                        ? "Desbloqueando cupo..."
+                        : `1. Desbloquear +1 Cupo Ahora (-$3.00 USD de mi Wallet)`}
+                    </button>
+
+                    {hasFreeAccountSlot && (
+                      <button
+                        type="button"
+                        onClick={() => setModalStep("PHONE")}
+                        className="w-full sm:w-auto py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black whitespace-nowrap cursor-pointer"
+                      >
+                        Vincular Número Ya →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {modalStep === "PHONE" && (
+                <form onSubmit={handleModalSendCode} className="space-y-4">
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                    ✓ ¡Tienes cupo disponible! Ingresa el nuevo número de teléfono de Telegram que deseas vincular a tu cuenta:
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5">
+                      Nuevo Número de Teléfono (con código de país, ej: +57...)
+                    </label>
+                    <div className="relative">
+                      <PhoneCall className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="+573001234567"
+                        value={modalPhone}
+                        onChange={(e) => setModalPhone(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-mono font-bold ${
+                          isDark ? "bg-[#12151B] border-[#2D3340] text-white" : "bg-white border-slate-300 text-slate-900"
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setModalStep("INFO")}
+                      className="px-4 py-3 rounded-xl border border-neutral-600 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      ← Volver
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={modalLoading}
+                      className="flex-1 py-3 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-lg cursor-pointer disabled:opacity-50"
+                    >
+                      {modalLoading ? "Enviando código a Telegram..." : "Enviar Código de 5 Dígitos a este Telegram"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {modalStep === "CODE" && (
+                <form onSubmit={handleModalVerifyCode} className="space-y-4">
+                  <div className="p-3.5 rounded-2xl bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9] text-xs font-bold">
+                    Hemos enviado un código oficial de 5 dígitos a la app de Telegram del número <strong>{modalPhone}</strong>.
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1.5">
+                      Código de Verificación de Telegram
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-neutral-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="12345"
+                        value={modalCode}
+                        onChange={(e) => setModalCode(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm font-mono font-black tracking-widest ${
+                          isDark ? "bg-[#12151B] border-[#2D3340] text-white" : "bg-white border-slate-300 text-slate-900"
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={modalLoading}
+                    className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-xl shadow-lg cursor-pointer disabled:opacity-50"
+                  >
+                    {modalLoading ? "Verificando y Cifrando Sesión..." : "Confirmar y Conectar Cuenta Adicional"}
+                  </button>
+                </form>
+              )}
+
+              {modalStep === "SUCCESS" && (
+                <div className="text-center py-4 space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black">¡Nueva Cuenta de Telegram Vinculada!</h3>
+                    <p className="text-xs text-neutral-400 mt-1">
+                      El número <strong>{modalPhone}</strong> ya quedó conectado y cifrado en tu panel de OttBot.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddonModal(false)}
+                    className="w-full py-3 bg-[#229ED9] text-white text-xs font-black rounded-xl cursor-pointer"
+                  >
+                    Listo, Cerrar Ventana
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
