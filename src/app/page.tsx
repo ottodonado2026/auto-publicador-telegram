@@ -1784,23 +1784,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <p className="text-xs font-medium">{t.footer.rights}</p>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-4 py-2 rounded-xl bg-[#229ED9]/15 text-[#229ED9] border border-[#229ED9]/30 font-black text-xs hover:bg-[#229ED9] hover:text-white transition-all shadow-sm"
-            >
-              {t.nav.login}
-            </Link>
-            <Link
-              href="/login?mode=register"
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t.nav.freeTrial}</span>
-            </Link>
-          </div>
+          <p className="text-xs font-medium text-center sm:text-right">{t.footer.rights}</p>
         </div>
       </footer>
 
