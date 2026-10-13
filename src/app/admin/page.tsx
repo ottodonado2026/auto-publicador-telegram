@@ -3,30 +3,33 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  Users, Activity, ShieldCheck, Send, ArrowUpRight, 
-  RefreshCw, BookOpen, Wallet, CheckCircle2, AlertCircle, Hash
+import { useTheme } from "@/context/ThemeContext";
+import {
+  Users, Activity, ShieldCheck, Send, ArrowUpRight,
+  RefreshCw, BookOpen, DollarSign, TrendingUp, Globe,
+  Wallet, Layers, CheckCircle2, Eye, Award, Calendar
 } from "lucide-react";
 
-interface StatsData {
-  totalUsers: number;
-  activeSubscriptions: number;
-  totalTelegrams: number;
-  totalCampaigns: number;
-}
+const ADMIN_CURRENCIES = [
+  { code: "USD", symbol: "$", name: "USD - Dólares", rate: 1, decimals: 2 },
+  { code: "COP", symbol: "$", name: "COP - Pesos Colombianos", rate: 4150, decimals: 0 },
+  { code: "EUR", symbol: "€", name: "EUR - Euros", rate: 0.92, decimals: 2 },
+  { code: "MXN", symbol: "$", name: "MXN - Pesos Mexicanos", rate: 19.8, decimals: 2 },
+  { code: "ARS", symbol: "$", name: "ARS - Pesos Argentinos", rate: 1180, decimals: 0 },
+];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<StatsData | null>(null);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [telegramAccounts, setTelegramAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currencyCode, setCurrencyCode] = useState("USD");
 
-  // Recarga rápida por código BOT-IXXXXXX
-  const [botCodeInput, setBotCodeInput] = useState("");
-  const [amountInput, setAmountInput] = useState("7.00");
-  const [recharging, setRecharging] = useState(false);
-  const [rechargeMsg, setRechargeMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/users");
@@ -36,6 +39,8 @@ export default function AdminDashboardPage() {
       }
       const data = await res.json();
       setStats(data.stats || null);
+      setUsers(data.users || []);
+      setTelegramAccounts(data.telegramAccounts || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -44,291 +49,495 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchStats();
+    fetchDashboardData();
   }, []);
 
-  const handleRechargeByCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setRechargeMsg(null);
-    const code = botCodeInput.trim().toUpperCase();
-    const numAmount = parseFloat(amountInput);
+  const curr = ADMIN_CURRENCIES.find((c) => c.code === currencyCode) || ADMIN_CURRENCIES[0];
 
-    if (!code) {
-      setRechargeMsg({ type: "err", text: "Ingresa el código BOT-IXXXXXX del usuario." });
-      return;
-    }
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setRechargeMsg({ type: "err", text: "Ingresa un monto en USD mayor a 0." });
-      return;
-    }
-
-    try {
-      setRecharging(true);
-      const res = await fetch("/api/admin/users", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          botCode: code,
-          walletCreditUSD: numAmount,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Error al recargar Wallet");
-      }
-
-      const u = data.user;
-      setRechargeMsg({
-        type: "ok",
-        text: `¡Recarga exitosa! +$${numAmount.toFixed(2)} USD acreditados a ${u?.storeName || u?.name || u?.email} (${u?.botCode}). Nuevo saldo Wallet: $${Number(u?.walletBalance || 0).toFixed(2)} USD.`,
-      });
-      setBotCodeInput("");
-      fetchStats();
-    } catch (err: any) {
-      setRechargeMsg({ type: "err", text: err.message || "Error al acreditar saldo" });
-    } finally {
-      setRecharging(false);
-    }
+  const formatMoney = (usdVal: number) => {
+    const val = Number(usdVal || 0) * curr.rate;
+    const formatted =
+      curr.decimals === 0 ? Math.round(val).toLocaleString("es-CO") : val.toFixed(2);
+    return `${curr.symbol}${formatted} ${curr.code}`;
   };
 
+  const farmAccounts = telegramAccounts.filter((a) => a.isSystemAccount);
+  const clientAccounts = telegramAccounts.filter((a) => !a.isSystemAccount);
+
   return (
-    <div className="p-8 max-w-7xl w-full mx-auto">
-      {/* Header Superior del Dashboard */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div className="p-6 sm:p-8 w-full max-w-[1600px] mx-auto space-y-7">
+      {/* HEADER SUPERIOR CON SELECTOR DE MONEDA (USD / COP / EUR) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">
-            Resumen Operativo & Recarga Manual
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9] text-[10px] font-black uppercase tracking-wider mb-2">
+            <span>Panel Principal SuperAdmin • Datos 100% Reales en Vivo</span>
+          </div>
+          <h1
+            className={`text-2xl sm:text-3xl font-black tracking-tight ${
+              isDark ? "text-white" : "text-[#0F172A]"
+            }`}
+          >
+            Resumen General, Reporte de Ventas & Analítica
           </h1>
-          <p className="text-xs text-neutral-500 font-medium mt-1">
-            Métricas de facturación, recarga de Wallet por código BOT-IXXXXXX y actividad en tiempo real.
+          <p className={`text-xs font-semibold mt-1 ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+            Control financiero en tiempo real, visitas a tu Landing Page, registros de clientes, ingresos por membresía y estado de tu granja.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Selector de Moneda USD / COP */}
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${
+              isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+            }`}
+          >
+            <DollarSign className="w-4 h-4 text-emerald-500" />
+            <span className={`text-[11px] font-black ${isDark ? "text-neutral-300" : "text-slate-700"}`}>
+              Moneda:
+            </span>
+            <select
+              value={currencyCode}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              className={`text-xs font-black rounded-lg px-2 py-1 cursor-pointer focus:outline-none ${
+                isDark ? "bg-[#13161C] text-emerald-400" : "bg-white text-emerald-700"
+              }`}
+            >
+              {ADMIN_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
-            onClick={fetchStats}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-semibold rounded-xl border border-neutral-300 shadow-sm transition-all cursor-pointer"
+            onClick={fetchDashboardData}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+              isDark
+                ? "bg-[#1B1F27] border-[#2B313F] text-neutral-200 hover:text-white"
+                : "bg-[#F4F6F9] border-slate-300 text-slate-700 hover:bg-white shadow-xs"
+            }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span>Actualizar</span>
+            <span>Actualizar Métricas</span>
           </button>
         </div>
       </div>
 
-      {/* MÓDULO DESTACADO: RECARGAR WALLET POR CÓDIGO BOT-IXXXXXX */}
-      <div className="mb-8 bg-white rounded-3xl p-6 sm:p-7 border-2 border-emerald-500/30 shadow-[0_8px_24px_rgba(16,185,129,0.08)]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-600 text-[11px] font-black uppercase tracking-wider mb-2.5 border border-emerald-500/30">
-              <Wallet className="w-3.5 h-3.5" />
-              Recarga Instantánea de Wallet por Código
+      {/* BLOQUE 1: REPORTE FINANCIERO DE VENTAS REALES (HOY, AYER, ESTE MES, MES PASADO, TOTAL) */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${isDark ? "text-emerald-400" : "text-emerald-700"}`}>
+            <TrendingUp className="w-4 h-4" />
+            Reporte de Ventas e Ingresos Reales ({curr.code})
+          </h2>
+          <Link
+            href="/admin/wallet"
+            className="text-xs font-black text-[#229ED9] hover:underline flex items-center gap-1"
+          >
+            <span>Ir a Recargar Wallet por Código BOT-I</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            {
+              label: "Generado Hoy",
+              val: stats?.revenue?.todayUSD ?? 0,
+              sub: "Ingresos acreditados hoy",
+              accent: "text-emerald-400",
+            },
+            {
+              label: "Generado Ayer",
+              val: stats?.revenue?.yesterdayUSD ?? 0,
+              sub: "Cierre del día anterior",
+              accent: isDark ? "text-white" : "text-slate-900",
+            },
+            {
+              label: "Generado Este Mes",
+              val: stats?.revenue?.thisMonthUSD ?? 0,
+              sub: "Acumulado del mes actual",
+              accent: "text-[#229ED9]",
+            },
+            {
+              label: "Generado Mes Pasado",
+              val: stats?.revenue?.lastMonthUSD ?? 0,
+              sub: "Total facturado mes anterior",
+              accent: isDark ? "text-neutral-200" : "text-slate-800",
+            },
+            {
+              label: "Total Histórico Generado",
+              val: stats?.revenue?.totalUSD ?? 0,
+              sub: "Ingresos globales reales",
+              accent: "text-emerald-400",
+            },
+          ].map((item, idx) => (
+            <div
+              key={idx}
+              className={`rounded-2xl p-5 border shadow-md ${
+                isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+              }`}
+            >
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-neutral-400">
+                {item.label}
+              </div>
+              <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${item.accent}`}>
+                {formatMoney(item.val)}
+              </div>
+              {currencyCode !== "USD" && (
+                <div className="text-[10px] font-mono text-neutral-400 mt-0.5">
+                  (${Number(item.val || 0).toFixed(2)} USD)
+                </div>
+              )}
+              <div className="text-[11px] text-neutral-400 mt-1.5">{item.sub}</div>
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-[#0F172A]">
-              Acreditar Saldo USD con Código Único (<span className="font-mono text-[#229ED9]">BOT-IXXXXXX</span>)
-            </h2>
-            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              Pídele al cliente su código único que aparece en la sección <strong>Mi Perfil</strong> de su portal (ej. <code className="font-mono font-bold text-neutral-700">BOT-I482910</code>) para recargar su Wallet al instante.
-            </p>
+          ))}
+        </div>
+      </div>
+
+      {/* BLOQUE 2: TRÁFICO DE LA LANDING PAGE & REGISTROS DE USUARIOS REALES */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Visitas Reales a la Landing Page */}
+        <div
+          className={`rounded-3xl p-6 border shadow-lg ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#229ED9]/15 text-[#229ED9] flex items-center justify-center">
+                <Eye className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-sm sm:text-base font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+                  Visitas Reales a tu Landing Page
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  Cuántas personas han entrado a ver tu página comercial
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9] text-xs font-black hover:bg-[#229ED9]/25 transition-all flex items-center gap-1"
+            >
+              <span>Ver Landing</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
           </div>
 
-          <form onSubmit={handleRechargeByCode} className="flex-1 max-w-2xl space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-5 relative">
-                <Hash className="w-4 h-4 text-[#229ED9] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: BOT-I482910"
-                  value={botCodeInput}
-                  onChange={(e) => setBotCodeInput(e.target.value.toUpperCase())}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-neutral-300 text-xs font-mono font-black uppercase tracking-wider text-neutral-900 focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9]"
-                />
-              </div>
-
-              <div className="sm:col-span-3 relative">
-                <span className="text-xs font-black text-emerald-600 absolute left-3.5 top-1/2 -translate-y-1/2">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.50"
-                  required
-                  placeholder="Monto USD"
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(e.target.value)}
-                  className="w-full pl-7 pr-10 py-2.5 rounded-xl border border-neutral-300 text-xs font-mono font-black text-neutral-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
-                />
-                <span className="text-[10px] font-bold text-neutral-400 absolute right-3 top-1/2 -translate-y-1/2">USD</span>
-              </div>
-
-              <div className="sm:col-span-4">
-                <button
-                  type="submit"
-                  disabled={recharging}
-                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {recharging ? "Acreditando..." : "⚡ Recargar Wallet"}
-                </button>
-              </div>
-            </div>
-
-            {/* Botones rápidos de planes */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="text-[10px] font-bold text-neutral-400 mr-1">Montos rápidos:</span>
-              {[
-                { label: "+$1.25 (Express)", val: "1.25" },
-                { label: "+$3.00 (Cuenta Extra)", val: "3.00" },
-                { label: "+$7.00 (Semanal)", val: "7.00" },
-                { label: "+$13.50 (Quincenal)", val: "13.50" },
-                { label: "+$24.00 (Mensual)", val: "24.00" },
-              ].map((preset) => (
-                <button
-                  key={preset.val}
-                  type="button"
-                  onClick={() => setAmountInput(preset.val)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
-                    amountInput === preset.val
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300"
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-
-            {rechargeMsg && (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "Hoy", val: stats?.landingVisits?.today ?? 0 },
+              { label: "Ayer", val: stats?.landingVisits?.yesterday ?? 0 },
+              { label: "Este Mes", val: stats?.landingVisits?.thisMonth ?? 0 },
+              { label: "Mes Pasado", val: stats?.landingVisits?.lastMonth ?? 0 },
+              { label: "Total Visitas", val: stats?.landingVisits?.total ?? 0 },
+            ].map((v, i) => (
               <div
-                className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
-                  rechargeMsg.type === "ok"
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700"
-                    : "bg-red-500/10 border-red-500/30 text-red-600"
+                key={i}
+                className={`p-3.5 rounded-2xl border text-center ${
+                  isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-white border-slate-200"
                 }`}
               >
-                {rechargeMsg.type === "ok" ? (
-                  <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
-                )}
-                <span>{rechargeMsg.text}</span>
+                <div className="text-[10px] font-bold uppercase text-neutral-400">{v.label}</div>
+                <div className="text-xl font-black font-mono text-[#229ED9] mt-1">{v.val}</div>
               </div>
-            )}
-          </form>
-        </div>
-      </div>
-
-      {/* Tarjetas de Métricas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between text-neutral-400 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Clientes Totales</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#229ED9] flex items-center justify-center">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
-            {stats?.totalUsers ?? "—"}
-          </div>
-          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
-            Registrados con código BOT-I
+            ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between text-neutral-400 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Membresías Activas</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+        {/* Usuarios Registrados por Fecha + Estado General */}
+        <div
+          className={`rounded-3xl p-6 border shadow-lg ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-sm sm:text-base font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+                  Nuevos Usuarios Registrados & Membresías
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  Clientes registrados hoy, ayer, este mes y el mes pasado
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="text-3xl font-black text-emerald-600 tracking-tight">
-            {stats?.activeSubscriptions ?? "—"}
-          </div>
-          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
-            Planes activos 24/7
-          </div>
-        </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between text-neutral-400 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Cuentas Telegram</span>
-            <div className="w-9 h-9 rounded-xl bg-sky-50 text-[#229ED9] flex items-center justify-center">
-              <Send className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
-            {stats?.totalTelegrams ?? "—"}
-          </div>
-          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
-            Protocolo MTProto GramJS
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between text-neutral-400 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">Campañas Globales</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-[#0F172A] tracking-tight">
-            {stats?.totalCampaigns ?? "—"}
-          </div>
-          <div className="mt-2 text-[11px] text-neutral-400 font-medium">
-            Envíos automáticos a grupos
-          </div>
-        </div>
-      </div>
-
-      {/* Módulos de Acceso Rápido y Estado */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl p-7 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex flex-col justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-[#229ED9] text-xs font-bold mb-4">
-              <span className="w-2 h-2 rounded-full bg-[#229ED9]"></span>
-              Paso Prioritario
-            </div>
-            <h2 className="text-lg font-bold text-neutral-900 tracking-tight">
-              Vincular Cuenta de Telegram de Granja
-            </h2>
-            <p className="text-xs text-neutral-500 mt-2 leading-relaxed max-w-lg">
-              Conecta la cuenta matriz de Telegram por protocolo MTProto para respaldar los envíos automáticos en grupos las 24 horas.
-            </p>
-          </div>
-
-          <div className="mt-6 pt-5 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-4">
-            <div className="text-xs text-neutral-500 font-medium">
-              Estado: <span className="text-emerald-600 font-semibold">Operativo</span>
-            </div>
             <Link
-              href="/admin/telegram"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-black text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+              href="/admin/users"
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-black hover:bg-emerald-500/25 transition-all flex items-center gap-1"
             >
-              <span>Configurar Cuenta de Telegram</span>
+              <span>Ver Clientes ({stats?.totalUsers ?? 0})</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "Reg. Hoy", val: stats?.registrations?.today ?? 0, color: "text-emerald-400" },
+              { label: "Reg. Ayer", val: stats?.registrations?.yesterday ?? 0, color: isDark ? "text-white" : "text-slate-900" },
+              { label: "Este Mes", val: stats?.registrations?.thisMonth ?? 0, color: "text-[#229ED9]" },
+              { label: "Mes Pasado", val: stats?.registrations?.lastMonth ?? 0, color: isDark ? "text-neutral-300" : "text-slate-700" },
+              { label: "Activos 24/7", val: stats?.activeSubscriptions ?? 0, color: "text-emerald-400" },
+            ].map((r, i) => (
+              <div
+                key={i}
+                className={`p-3.5 rounded-2xl border text-center ${
+                  isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-white border-slate-200"
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase text-neutral-400">{r.label}</div>
+                <div className={`text-xl font-black font-mono mt-1 ${r.color}`}>{r.val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* BLOQUE 3: CUÁNTO HAS GENERADO DE CADA MEMBRESÍA + CUÁNTO HA GENERADO CADA USUARIO */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Ingresos por cada Tipo de Membresía */}
+        <div
+          className={`xl:col-span-5 rounded-3xl p-6 border shadow-lg ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className={`text-base font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+                Generado por Tipo de Membresía
+              </h3>
+              <p className="text-[11px] text-neutral-400">
+                Desglose real de ventas por cada plan y cuentas adicionales
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            {[
+              {
+                name: "Pase Express (1 Día • $1.25 USD)",
+                count: stats?.planBreakdown?.express1d?.count ?? 0,
+                rev: stats?.planBreakdown?.express1d?.revenueUSD ?? 0,
+              },
+              {
+                name: "Plan Semanal (7 Días • $7.00 USD)",
+                count: stats?.planBreakdown?.semanal7d?.count ?? 0,
+                rev: stats?.planBreakdown?.semanal7d?.revenueUSD ?? 0,
+              },
+              {
+                name: "Plan Quincenal PRO (15 Días • $13.50 USD)",
+                count: stats?.planBreakdown?.quincenal15d?.count ?? 0,
+                rev: stats?.planBreakdown?.quincenal15d?.revenueUSD ?? 0,
+              },
+              {
+                name: "Plan Mensual Élite (30 Días • $24.00 USD)",
+                count: stats?.planBreakdown?.mensual30d?.count ?? 0,
+                rev: stats?.planBreakdown?.mensual30d?.revenueUSD ?? 0,
+              },
+              {
+                name: "Cuentas Adicionales TG (+$3.00 USD)",
+                count: stats?.planBreakdown?.extraAccounts?.count ?? 0,
+                rev: stats?.planBreakdown?.extraAccounts?.revenueUSD ?? 0,
+              },
+            ].map((p, idx) => (
+              <div
+                key={idx}
+                className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                  isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-white border-slate-200"
+                }`}
+              >
+                <div>
+                  <div className={`font-black ${isDark ? "text-white" : "text-slate-900"}`}>{p.name}</div>
+                  <div className="text-[11px] text-neutral-400">{p.count} activación(es) registrada(s)</div>
+                </div>
+                <div className="text-right font-mono font-black text-emerald-400">
+                  {formatMoney(p.rev)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-7 border border-neutral-200/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+        {/* Cuánto ha generado cada usuario registrado */}
+        <div
+          className={`xl:col-span-7 rounded-3xl p-6 border shadow-lg ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className={`text-base font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+                Ingresos Generados por Cada Usuario
+              </h3>
+              <p className="text-[11px] text-neutral-400">
+                Cuánto te ha generado cada cliente, su membresía actual y su saldo en Wallet
+              </p>
+            </div>
+            <Link href="/admin/users" className="text-xs font-black text-[#229ED9] hover:underline">
+              Ver Todos →
+            </Link>
+          </div>
+
+          <div className="space-y-2.5">
+            {users.slice(0, 6).map((u) => (
+              <div
+                key={u.id}
+                className={`p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-xs ${
+                  isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-white border-slate-200"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="px-2.5 py-1 rounded-lg bg-[#229ED9]/15 border border-[#229ED9]/35 text-[#229ED9] font-mono font-black text-[11px]">
+                    {u.botCode || "BOT-I"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className={`font-black truncate ${isDark ? "text-white" : "text-slate-900"}`}>
+                      {u.storeName || u.name || "Cliente"}
+                    </div>
+                    <div className="text-[11px] text-neutral-400 truncate">
+                      {u.planName} • {u.email}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-neutral-400 block">Wallet Actual</span>
+                    <span className="font-mono font-bold text-sky-400">
+                      ${Number(u.walletBalance || 0).toFixed(2)} USD
+                    </span>
+                  </div>
+                  <div className="text-right pl-3 border-l border-neutral-500/20">
+                    <span className="text-[10px] font-bold text-neutral-400 block">Generado por Usuario</span>
+                    <span className="font-mono font-black text-emerald-400">
+                      {formatMoney(u.totalGeneratedUSD || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* BLOQUE 4: MIS CUENTAS VINCULADAS (GRANJA & CLIENTES) + MANUAL DEL SUPERADMIN */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Cuentas de Telegram Vinculadas */}
+        <div
+          className={`lg:col-span-8 rounded-3xl p-6 border shadow-lg ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#229ED9]/15 text-[#229ED9] flex items-center justify-center">
+                <Send className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className={`text-base font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+                  Cuentas de Telegram Vinculadas ({telegramAccounts.length} Totales)
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  {farmAccounts.length} cuenta(s) en tu Flota/Granja • {clientAccounts.length} cuenta(s) propias de clientes • {stats?.totalMessagesSent ?? 0} envíos totales reales
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/admin/telegram"
+              className="px-3.5 py-2 rounded-xl bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black transition-all flex items-center gap-1.5"
+            >
+              <span>Administrar Granja</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {telegramAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                  isDark ? "bg-[#13161C] border-[#282E3B]" : "bg-white border-slate-200"
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-black truncate ${isDark ? "text-white" : "text-slate-900"}`}>
+                      {acc.firstName || "Telegram"} {acc.username ? `(@${acc.username})` : ""}
+                    </span>
+                    <span
+                      className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
+                        acc.isSystemAccount
+                          ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                          : "bg-sky-500/20 text-[#229ED9] border border-[#229ED9]/30"
+                      }`}
+                    >
+                      {acc.isSystemAccount ? "MI GRANJA" : "CLIENTE"}
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-mono text-neutral-400 mt-0.5 truncate">
+                    {acc.phoneNumber} • {acc.user?.storeName || acc.user?.email}
+                  </div>
+                </div>
+
+                <span
+                  className={`text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap ${
+                    acc.status === "CONNECTED"
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                  }`}
+                >
+                  ● {acc.status === "CONNECTED" ? "Conectada" : acc.status}
+                </span>
+              </div>
+            ))}
+
+            {telegramAccounts.length === 0 && !loading && (
+              <div className="col-span-2 p-6 text-center text-xs text-neutral-400">
+                No hay cuentas de Telegram vinculadas todavía.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Manual del SuperAdmin */}
+        <div
+          className={`lg:col-span-4 rounded-3xl p-6 border shadow-lg flex flex-col justify-between ${
+            isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+          }`}
+        >
           <div>
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 text-neutral-800 flex items-center justify-center mb-4">
+            <div className="w-11 h-11 rounded-2xl bg-[#229ED9]/15 text-[#229ED9] flex items-center justify-center mb-4">
               <BookOpen className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-neutral-900">
-              Manual del SuperAdmin
+            <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+              Manual Operativo del SuperAdmin
             </h3>
-            <p className="text-xs text-neutral-500 mt-2 leading-relaxed">
-              Aprende cómo recargar la Wallet por código BOT-IXXXXXX, supervisar sesiones y gestionar planes.
+            <p className={`text-xs mt-2 leading-relaxed ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+              Guía completa sobre cómo operar tu Granja MTProto, recargar Wallets mediante el código único <code className="font-mono text-[#229ED9]">BOT-IXXXXXX</code>, supervisar el cobro automático diario de Wallet y promocionar OttBot en los grupos recolectados.
             </p>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-neutral-100">
+          <div className="mt-6 pt-4 border-t border-neutral-500/20 flex items-center justify-between">
             <Link
               href="/admin/guide"
-              className="text-xs font-bold text-[#229ED9] hover:underline inline-flex items-center gap-1"
+              className="w-full py-3 px-4 rounded-xl bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black text-center flex items-center justify-center gap-2 transition-all shadow-md"
             >
-              <span>Abrir Manual Completo</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Abrir Manual del SuperAdmin</span>
+              <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

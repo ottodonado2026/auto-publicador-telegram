@@ -20,10 +20,14 @@ export async function GET() {
           id: true,
           name: true,
           targetGroupIds: true,
+          userId: true,
           user: {
             select: {
+              id: true,
+              botCode: true,
               email: true,
               storeName: true,
+              name: true,
               phoneNumber: true,
             },
           },
@@ -35,9 +39,23 @@ export async function GET() {
           targetGroupId: true,
           targetGroupName: true,
           sentAt: true,
+          campaign: {
+            select: {
+              userId: true,
+              user: {
+                select: {
+                  id: true,
+                  botCode: true,
+                  email: true,
+                  storeName: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
-        take: 500,
+        take: 1000,
       }),
     ]);
 
@@ -47,15 +65,41 @@ export async function GET() {
         identifier: string;
         title: string;
         addedByStores: Set<string>;
+        userIds: Set<string>;
         totalSentCount: number;
         lastSentAt: Date | null;
       }
     >();
 
-    // Procesar grupos de las campañas de los clientes
+    const userGroupMap = new Map<
+      string,
+      {
+        userId: string;
+        botCode: string;
+        userName: string;
+        email: string;
+        phoneNumber: string;
+        groupKeys: Set<string>;
+      }
+    >();
+
+    // Procesar grupos de las campañas de cada cliente
     for (const c of campaigns) {
       const targets = Array.isArray(c.targetGroupIds) ? (c.targetGroupIds as string[]) : [];
-      const storeLabel = c.user?.storeName || c.user?.email || "Cliente";
+      const u = c.user;
+      const storeLabel = u?.storeName || u?.name || u?.email || "Cliente";
+      const uid = u?.id || c.userId;
+
+      if (!userGroupMap.has(uid)) {
+        userGroupMap.set(uid, {
+          userId: uid,
+          botCode: u?.botCode || "BOT-I000000",
+          userName: storeLabel,
+          email: u?.email || "",
+          phoneNumber: u?.phoneNumber || "",
+          groupKeys: new Set<string>(),
+        });
+      }
 
       for (const raw of targets) {
         const clean = raw
@@ -67,16 +111,20 @@ export async function GET() {
         if (!clean) continue;
 
         const key = clean.toLowerCase();
+        userGroupMap.get(uid)!.groupKeys.add(key);
+
         if (!groupMap.has(key)) {
           groupMap.set(key, {
             identifier: clean,
             title: clean,
             addedByStores: new Set([storeLabel]),
+            userIds: new Set([uid]),
             totalSentCount: 0,
             lastSentAt: null,
           });
         } else {
           groupMap.get(key)!.addedByStores.add(storeLabel);
+          groupMap.get(key)!.userIds.add(uid);
         }
       }
     }
@@ -91,12 +139,30 @@ export async function GET() {
 
       if (!clean) continue;
       const key = clean.toLowerCase();
+      const u = log.campaign?.user;
+      const uid = u?.id || log.campaign?.userId || "historial";
+      const storeLabel = u?.storeName || u?.name || u?.email || "Historial";
+
+      if (u && !userGroupMap.has(uid)) {
+        userGroupMap.set(uid, {
+          userId: uid,
+          botCode: u.botCode || "BOT-I000000",
+          userName: storeLabel,
+          email: u.email || "",
+          phoneNumber: "",
+          groupKeys: new Set<string>(),
+        });
+      }
+      if (userGroupMap.has(uid)) {
+        userGroupMap.get(uid)!.groupKeys.add(key);
+      }
 
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           identifier: clean,
           title: log.targetGroupName || clean,
-          addedByStores: new Set(["Historial"]),
+          addedByStores: new Set([storeLabel]),
+          userIds: new Set([uid]),
           totalSentCount: 1,
           lastSentAt: log.sentAt,
         });
@@ -105,6 +171,8 @@ export async function GET() {
         if (log.targetGroupName && log.targetGroupName !== clean) {
           entry.title = log.targetGroupName;
         }
+        entry.addedByStores.add(storeLabel);
+        entry.userIds.add(uid);
         entry.totalSentCount += 1;
         if (!entry.lastSentAt || (log.sentAt && log.sentAt > entry.lastSentAt)) {
           entry.lastSentAt = log.sentAt;
@@ -117,13 +185,43 @@ export async function GET() {
       link: `https://t.me/${g.identifier}`,
       title: g.title,
       stores: Array.from(g.addedByStores),
+      userIds: Array.from(g.userIds),
       totalSentCount: g.totalSentCount,
       lastSentAt: g.lastSentAt,
     }));
 
+    const usersWithGroups = Array.from(userGroupMap.values())
+      .map((u) => {
+        const userGroups = Array.from(u.groupKeys)
+          .map((k) => {
+            const g = groupMap.get(k);
+            if (!g) return null;
+            return {
+              identifier: g.identifier,
+              link: `https://t.me/${g.identifier}`,
+              title: g.title,
+              totalSentCount: g.totalSentCount,
+              lastSentAt: g.lastSentAt,
+            };
+          })
+          .filter(Boolean);
+
+        return {
+          userId: u.userId,
+          botCode: u.botCode,
+          userName: u.userName,
+          email: u.email,
+          phoneNumber: u.phoneNumber,
+          groupsCount: userGroups.length,
+          groups: userGroups,
+        };
+      })
+      .filter((u) => u.groupsCount > 0);
+
     return NextResponse.json({
       totalUniqueGroups: groups.length,
       groups,
+      usersWithGroups,
     });
   } catch (error: any) {
     console.error("Error en GET /api/admin/groups:", error);

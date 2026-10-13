@@ -9,7 +9,7 @@ import {
   Plus, Pause, AlertCircle, Clock, 
   CheckCircle2, MessageSquare, Activity, 
   RefreshCw, Rocket, XCircle, Users, Edit3, BookmarkCheck,
-  ChevronLeft, ChevronRight, Zap, BookOpen, Smartphone, BarChart3, MousePointerClick, Layers
+  ChevronLeft, ChevronRight, Zap, BookOpen, Smartphone, BarChart3, MousePointerClick, Layers, ShieldCheck
 } from "lucide-react";
 
 function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, nowMs: number) {
@@ -253,15 +253,15 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                {/* Resumen Diario Real según el Plan Activo */}
+                {/* Resumen Diario 100% Real según el Plan Activo y Estado de Wallet */}
                 <div className="flex flex-wrap items-center gap-4 bg-[#090E17]/80 px-4 py-2.5 rounded-2xl border border-[#1E2D45]">
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                      Publicaciones de Hoy
+                      Publicaciones Reales Hoy
                     </span>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-xl font-black text-emerald-400 font-mono">{todaySentCount}</span>
-                      <span className="text-xs text-slate-400 font-bold">/ {maxDailyPosts} máx. hoy</span>
+                      <span className="text-xs text-slate-400 font-bold">/ {maxDailyPosts} meta hoy</span>
                     </div>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
@@ -276,17 +276,48 @@ export default function ClientDashboard() {
                   <div className="h-8 w-px bg-white/10" />
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                      Clics / Visitas Hoy
+                      Estado Ciclo / Auto-Wallet
                     </span>
-                    <div className="text-sm font-black text-amber-400 flex items-center gap-1">
-                      <MousePointerClick className="w-3.5 h-3.5" />
-                      <span>~{estimatedProfileClicks} clics</span>
+                    <div className="text-xs font-black flex items-center gap-1.5">
+                      {dailyLimitReached ? (
+                        <span className="text-emerald-400">✅ Ciclo Hoy Completado</span>
+                      ) : (
+                        <span className="text-amber-400">
+                          🔄 Auto-Wallet: ${Number(sessionUser?.walletBalance || 0).toFixed(2)} USD
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Barra de Botones Rápidos + Selector de Pestañas (Campañas en Vivo vs Métricas por Grupo) */}
+              {/* Barra Informativa de Ciclo y Renovación Automática por Wallet */}
+              <div className="mt-4 p-3 rounded-2xl bg-[#090E17]/70 border border-[#1E2D45] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span className="text-slate-300">
+                    {dailyLimitReached ? (
+                      <strong className="text-emerald-400">
+                        ✅ ¡Campañas y Grupos Completados Hoy! Has cumplido tus {maxDailyPosts} publicaciones del día.
+                      </strong>
+                    ) : (
+                      <>
+                        Tus campañas activas están cumpliendo su ciclo diario ({todaySentCount}/{maxDailyPosts} envíos hoy).{" "}
+                        <span className="text-slate-400">
+                          No se pausarán hasta cumplir el ciclo del día.
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-[#38BDF8]">
+                  {Number(sessionUser?.walletBalance || 0) >= 1.25
+                    ? `🔄 Cobro Automático Activo (Saldo Wallet: $${Number(sessionUser?.walletBalance || 0).toFixed(2)} USD)`
+                    : "⚠️ Saldo Wallet $0.00: Recarga para continuar automáticamente al vencer"}
+                </span>
+              </div>
+
+              {/* Barra de Botones Rápidos + Selector de Pestañas */}
               <div className="pt-4 flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
@@ -311,7 +342,7 @@ export default function ClientDashboard() {
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>Métricas por Grupo & Clics ({groupBreakdown.length})</span>
+                  <span>Grupos Publicados Hoy ({groupBreakdown.length})</span>
                 </button>
 
                 <Link
@@ -327,7 +358,7 @@ export default function ClientDashboard() {
                   className="px-4 py-2.5 rounded-xl bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 text-xs font-extrabold text-[#38BDF8] flex items-center gap-2 transition-all"
                 >
                   <Smartphone className="w-3.5 h-3.5" />
-                  <span>Sincronizar Grupos</span>
+                  <span>Mi Perfil & Telegram</span>
                 </Link>
 
                 <Link
@@ -340,7 +371,7 @@ export default function ClientDashboard() {
               </div>
             </div>
 
-            {/* VISTA 2: PANEL DE MÉTRICAS POR GRUPO, REPARTO DE CAMPAÑAS Y CLICS AL PERFIL/CANAL */}
+            {/* VISTA 2: PANEL DE MÉTRICAS REALES POR GRUPO Y REPARTO DE CAMPAÑAS */}
             {activeView === "METRICS" ? (
               <div className="space-y-6">
                 {/* Tarjeta Explicativa del Reparto Actual del Usuario */}
@@ -348,7 +379,7 @@ export default function ClientDashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8] block">
-                        Control Inteligente de tu Plan ({planName})
+                        Control Real de tu Plan ({planName})
                       </span>
                       <h2 className="text-lg sm:text-xl font-black mt-0.5">
                         Distribución de tus {maxDailyPosts} Publicaciones Diarias y {maxGroupsAllowed >= 9999 ? "Grupos Ilimitados" : `${maxGroupsAllowed} Grupos`}
@@ -367,7 +398,7 @@ export default function ClientDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
                     <div className="p-4 rounded-2xl bg-[#131B2A] border border-[#223049]">
                       <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
-                        Tope Diario de tu Plan
+                        Envíos Reales Hoy
                       </span>
                       <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
                         {todaySentCount} / {maxDailyPosts}
@@ -391,7 +422,7 @@ export default function ClientDashboard() {
 
                     <div className="p-4 rounded-2xl bg-[#131B2A] border border-[#223049]">
                       <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
-                        Grupos Impactados Hoy
+                        Grupos Publicados Hoy
                       </span>
                       <span className="text-2xl font-black text-white font-mono mt-1 block">
                         {groupBreakdown.length} grupos
@@ -401,15 +432,15 @@ export default function ClientDashboard() {
                       </span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-amber-500/30">
-                      <span className="text-[10px] font-extrabold uppercase text-amber-400 block">
-                        Clics / Visitas Estimadas Hoy
+                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-emerald-500/30">
+                      <span className="text-[10px] font-extrabold uppercase text-emerald-400 block">
+                        Estado del Ciclo Diario
                       </span>
-                      <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
-                        ~{estimatedProfileClicks} clics
+                      <span className="text-lg font-black text-emerald-400 mt-1 block">
+                        {dailyLimitReached ? "✅ Ciclo Completado" : "🔄 En Ejecución"}
                       </span>
                       <span className="text-[11px] text-slate-400 mt-1 block">
-                        Hacia tu @usuario o enlace en el copy
+                        Wallet: <strong>${Number(sessionUser?.walletBalance || 0).toFixed(2)} USD</strong>
                       </span>
                     </div>
                   </div>
@@ -418,7 +449,7 @@ export default function ClientDashboard() {
                   {activeCampaigns.length > 0 && (
                     <div className="mt-5 p-4 rounded-2xl bg-[#0B101B] border border-[#1E2A40]">
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-3">
-                        Cómo se dividen hoy tus {maxDailyPosts} publicaciones entre tus campañas activas:
+                        Estado de cumplimiento hoy por cada campaña activa:
                       </span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {activeCampaigns.map((camp: any, idx: number) => {
@@ -426,7 +457,8 @@ export default function ClientDashboard() {
                             maxGroupsAllowed,
                             Array.isArray(camp.targetGroupIds) ? new Set(camp.targetGroupIds).size : 1
                           );
-                          const roundsPerDay = Math.max(1, Math.floor(postsPerActiveCampaign / Math.max(1, gCount)));
+                          const campSentToday = camp.sentToday || 0;
+                          const campCompleted = camp.isDailyCycleCompleted || dailyLimitReached;
                           return (
                             <div
                               key={camp.id}
@@ -437,11 +469,17 @@ export default function ClientDashboard() {
                                   Campaña #{idx + 1}: {camp.name}
                                 </span>
                                 <span className="text-[11px] text-slate-400 mt-0.5 block">
-                                  {gCount} grupos asignados • ~{roundsPerDay} rondas completas en el día
+                                  {gCount} grupos asignados • {campSentToday} de {postsPerActiveCampaign} enviados hoy
                                 </span>
                               </div>
-                              <span className="px-3 py-1 rounded-lg bg-[#38BDF8]/15 text-[#38BDF8] font-mono font-black">
-                                {postsPerActiveCampaign} envíos/día
+                              <span
+                                className={`px-3 py-1 rounded-lg font-mono font-black ${
+                                  campCompleted
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : "bg-[#38BDF8]/15 text-[#38BDF8]"
+                                }`}
+                              >
+                                {campCompleted ? "✅ Completada Hoy" : `${campSentToday}/${postsPerActiveCampaign}`}
                               </span>
                             </div>
                           );
@@ -456,10 +494,10 @@ export default function ClientDashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div>
                       <h3 className="text-base sm:text-lg font-black">
-                        Registro Exacto de Publicaciones por Grupo (Hoy)
+                        Registro Real de Publicaciones por Grupo (Hoy)
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Aquí puedes verificar cuántas veces se ha publicado tu anuncio en cada grupo de Telegram durante el día de hoy.
+                        Conteo exacto de envíos reales confirmados por Telegram en cada grupo durante el día de hoy.
                       </p>
                     </div>
 
@@ -490,7 +528,7 @@ export default function ClientDashboard() {
 
                   {groupBreakdown.length === 0 ? (
                     <div className="p-8 rounded-2xl bg-[#131B2A] border border-[#223049] text-center text-xs text-slate-400">
-                      Aún no se registran envíos hoy desde las 00:00. En cuanto avance la ronda actual aparecerá el conteo grupo por grupo.
+                      Aún no se registran envíos hoy desde las 00:00. En cuanto avance la ronda actual aparecerá el conteo real grupo por grupo.
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -499,9 +537,9 @@ export default function ClientDashboard() {
                           <tr className="border-b border-[#223049] text-[10px] font-extrabold uppercase text-slate-400">
                             <th className="py-3 px-4">Grupo / Canal de Telegram</th>
                             <th className="py-3 px-4">Enlace / ID</th>
-                            <th className="py-3 px-4 text-center">Publicaciones Hoy</th>
-                            <th className="py-3 px-4 text-center">Clics Estimados</th>
-                            <th className="py-3 px-4 text-right">Último Envío</th>
+                            <th className="py-3 px-4 text-center">Publicaciones Reales Hoy</th>
+                            <th className="py-3 px-4 text-center">Estado en el Ciclo</th>
+                            <th className="py-3 px-4 text-right">Último Envío Real</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1E2A40]">
@@ -522,8 +560,8 @@ export default function ClientDashboard() {
                                   </span>
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-400 font-mono font-bold">
-                                    ~{Math.max(1, Math.round(item.sentToday * 0.4))} clics
+                                  <span className="px-2.5 py-1 rounded-lg bg-[#38BDF8]/15 text-[#38BDF8] font-bold">
+                                    {dailyLimitReached ? "✅ Grupo Completado Hoy" : "● Activo en Ciclo"}
                                   </span>
                                 </td>
                                 <td className="py-3 px-4 text-right font-mono text-slate-300">
@@ -588,6 +626,9 @@ export default function ClientDashboard() {
                         const targetCount = Math.max(1, uniqueTargets.length);
                         const sentCount = c._count?.logs || 0;
                         const logs: any[] = c.logs || [];
+                        const campSentToday = c.sentToday || 0;
+                        const isCampCycleCompleted = Boolean(c.isDailyCycleCompleted || dailyLimitReached);
+                        const isMidCycleLocked = campSentToday > 0 && !isCampCycleCompleted;
 
                         // Determinar si la campaña está EMITIENDO EN VIVO (intervalo real de 60s -> 0s) o EN DESCANSO (60m / 120m -> 00m 00s)
                         const latestLogMs = logs[0]?.createdAt ? new Date(logs[0].createdAt).getTime() : 0;
@@ -604,7 +645,7 @@ export default function ClientDashboard() {
                           isManualBroadcasting ||
                           (secSinceLatestLog >= 0 && secSinceLatestLog <= 62 && logsInCurrentRound < targetCount);
 
-                        // Conteo regresivo exacto de 60s hasta 0s (llega hasta 0s y0% al final de la barra antes del siguiente grupo)
+                        // Conteo regresivo exacto de 60s hasta 0s (llega hasta 0s y 0% al final de la barra antes del siguiente grupo)
                         const manualElapsedSec = broadcastStartMs[c.id]
                           ? Math.max(0, Math.floor((nowMs - broadcastStartMs[c.id]) / 1000))
                           : 0;
@@ -648,12 +689,18 @@ export default function ClientDashboard() {
                                   <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
                                     {c.name}
                                   </h2>
-                                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                    Activa 24/7 Nube
-                                  </span>
+                                  {isCampCycleCompleted ? (
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                                      ✅ Campaña Completada Hoy • Grupos Completados
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                      Activa 24/7 Nube
+                                    </span>
+                                  )}
                                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30">
-                                    Cupo asignado: {postsPerActiveCampaign} envíos/día
+                                    Hoy: {campSentToday} / {postsPerActiveCampaign} envíos
                                   </span>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-1 truncate">
@@ -661,7 +708,7 @@ export default function ClientDashboard() {
                                 </p>
                               </div>
 
-                              {/* Fila Única Alineada: Editar + Pausar 24/7 Nube + Ronda Manual */}
+                              {/* Fila Única Alineada: Editar + Pausar (sólo cuando cumpla el ciclo) + Ronda Manual */}
                               <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 flex-shrink-0">
                                 <Link
                                   href={`/dashboard/campaigns?edit=${c.id}`}
@@ -674,13 +721,21 @@ export default function ClientDashboard() {
 
                                 <button
                                   type="button"
-                                  disabled={actionLoading === c.id}
+                                  disabled={actionLoading === c.id || isMidCycleLocked}
                                   onClick={() => toggleCampaign(c.id, c.status)}
-                                  className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-rose-950/50 hover:bg-rose-900/60 text-rose-400 border border-rose-500/40 transition-all cursor-pointer whitespace-nowrap"
-                                  title="Pausar esta campaña 24/7"
+                                  className={`flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl border transition-all whitespace-nowrap ${
+                                    isMidCycleLocked
+                                      ? "bg-slate-800/60 text-slate-400 border-slate-700 cursor-not-allowed opacity-75"
+                                      : "bg-rose-950/50 hover:bg-rose-900/60 text-rose-400 border-rose-500/40 cursor-pointer"
+                                  }`}
+                                  title={
+                                    isMidCycleLocked
+                                      ? "Esta campaña está cumpliendo su ciclo de hoy; se podrá pausar cuando complete sus publicaciones diarias"
+                                      : "Pausar esta campaña 24/7"
+                                  }
                                 >
                                   <Pause className="w-3.5 h-3.5" />
-                                  <span>Pausar 24/7 Nube</span>
+                                  <span>{isMidCycleLocked ? "Cumpliendo Ciclo Hoy" : "Pausar 24/7 Nube"}</span>
                                 </button>
 
                                 {dailyLimitReached ? (

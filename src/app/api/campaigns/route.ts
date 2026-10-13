@@ -71,7 +71,11 @@ export async function GET() {
       { groupName: string; groupId: string; sentToday: number; lastSentAt: Date }
     >();
 
+    const campaignTodayCountMap = new Map<string, number>();
+
     for (const log of todayLogs) {
+      campaignTodayCountMap.set(log.campaignId, (campaignTodayCountMap.get(log.campaignId) || 0) + 1);
+
       const key = log.targetGroupName || log.targetGroupId;
       const existing = groupMap.get(key);
       if (existing) {
@@ -90,10 +94,25 @@ export async function GET() {
       (a, b) => b.sentToday - a.sentToday
     );
 
+    const activeCount = Math.max(1, campaigns.filter((c) => c.status === "ACTIVE").length);
+    const perCampaignQuota = Math.floor(maxDailyPosts / activeCount);
+
+    const enrichedCampaigns = campaigns.map((c) => {
+      const sentToday = campaignTodayCountMap.get(c.id) || 0;
+      const isDailyCycleCompleted =
+        sentToday >= perCampaignQuota || todayLogs.length >= maxDailyPosts;
+      return {
+        ...c,
+        sentToday,
+        dailyQuota: perCampaignQuota,
+        isDailyCycleCompleted,
+      };
+    });
+
     const todaySentCount = Math.min(todayLogs.length, maxDailyPosts);
 
     return NextResponse.json({
-      campaigns,
+      campaigns: enrichedCampaigns,
       telegramAccount,
       membership,
       user,
@@ -230,6 +249,46 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json(
           {
             error: `Tu plan actual permite hasta ${maxAllowedActive} campañas activas al mismo tiempo. Pausa primero una de tus campañas en curso para activar este copy.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Si intenta PAUSAR una campaña que está ACTIVA hoy y todavía no ha cumplido su ciclo diario de publicaciones,
+    // no permitir pausarla hasta que se cumplan las publicaciones del día
+    if (status === "PAUSED") {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const [userSub, activeCount, totalSentToday, campaignSentToday] = await Promise.all([
+        prisma.subscription.findUnique({ where: { userId: session.userId } }),
+        prisma.campaign.count({ where: { userId: session.userId, status: "ACTIVE" } }),
+        prisma.messageLog.count({
+          where: {
+            campaign: { userId: session.userId },
+            status: "SENT",
+            createdAt: { gte: startOfDay },
+          },
+        }),
+        prisma.messageLog.count({
+          where: {
+            campaignId: id,
+            status: "SENT",
+            createdAt: { gte: startOfDay },
+          },
+        }),
+      ]);
+
+      const maxCampQuota = userSub?.maxCampaigns || 2;
+      const maxDailyPosts =
+        maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
+      const perCampaignQuota = Math.floor(maxDailyPosts / Math.max(1, activeCount));
+
+      if (campaignSentToday > 0 && campaignSentToday < perCampaignQuota && totalSentToday < maxDailyPosts) {
+        return NextResponse.json(
+          {
+            error: `Esta campaña está en curso (${campaignSentToday}/${perCampaignQuota} envíos hoy). No se puede pausar hasta que complete sus publicaciones del día.`,
           },
           { status: 400 }
         );

@@ -217,3 +217,15 @@ model PendingAuthSession {
 
   @@map("pending_auth_sessions")
 }
+
+model LandingVisit {
+  id          String   @id @default(uuid())
+  visitorHash String?
+  lang        String?  @default("es")
+  currency    String?  @default("USD")
+  referrer    String?
+  createdAt   DateTime @default(now())
+
+  @@map("landing_visits")
+}
+

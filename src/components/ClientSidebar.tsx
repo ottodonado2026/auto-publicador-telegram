@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
-  LayoutDashboard, Send, PlusCircle, 
+  LayoutDashboard, PlusCircle, 
   CreditCard, LogOut, Clock, Sun, Moon, BookOpen, Wallet,
-  ChevronLeft, ChevronRight, Menu, X, UserCheck, Copy, Check
+  ChevronLeft, ChevronRight, Menu, X, UserCheck
 } from "lucide-react";
 
 interface ClientSidebarProps {
@@ -22,7 +22,6 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("ottbot_sidebar_collapsed") === "true";
@@ -41,18 +40,6 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
-  };
-
-  const botCode = user?.botCode || "BOT-I------";
-
-  const handleCopyBotCode = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (user?.botCode) {
-      navigator.clipboard.writeText(user.botCode);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 1800);
-    }
   };
 
   const navItems = [
@@ -90,12 +77,6 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
 
         <div className="flex items-center gap-2">
           <Link
-            href="/dashboard/telegram"
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#229ED9]/15 border border-[#229ED9]/40 text-[11px] font-mono font-black text-[#229ED9]"
-          >
-            <span>{botCode}</span>
-          </Link>
-          <Link
             href="/dashboard/plans"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-xs font-black text-emerald-400"
           >
@@ -121,7 +102,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Parte Superior: Brand Header + Wallet + Código BOT-I + Navegación */}
+        {/* Parte Superior: Brand Header + Wallet + Navegación */}
         <div>
           <div className={`${
             collapsed ? "lg:flex-col lg:justify-center lg:py-3.5 lg:px-2 lg:h-auto lg:gap-2.5" : "h-20 justify-between px-4"
@@ -163,14 +144,14 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
             </button>
           </div>
 
-          {/* Tarjeta de Wallet Rápida + Código Único de Usuario BOT-IXXXXXX */}
-          <div className={`${collapsed ? "lg:px-2" : "px-4"} pt-4 pb-1 space-y-2`}>
+          {/* Tarjeta de Wallet Rápida (El código BOT-I solo aparece dentro de Mi Perfil & Telegram) */}
+          <div className={`${collapsed ? "lg:px-2" : "px-4"} pt-4 pb-1`}>
             <Link
               href="/dashboard/plans"
               onClick={() => setMobileOpen(false)}
               title={`Mi Wallet: $${walletBalance} USD`}
               className={`w-full flex items-center ${
-                collapsed ? "lg:flex-col lg:justify-center lg:px-1.5 lg:py-2.5 gap-1" : "justify-between px-3.5 py-2.5"
+                collapsed ? "lg:flex-col lg:justify-center lg:px-1.5 lg:py-2.5 gap-1" : "justify-between px-3.5 py-3"
               } rounded-2xl bg-gradient-to-r from-emerald-950/80 via-[#192524] to-[#171A20] border border-emerald-500/40 hover:border-emerald-400 shadow-lg shadow-emerald-950/30 transition-all group`}
             >
               <span className="flex items-center gap-2 text-xs font-black text-emerald-400">
@@ -183,27 +164,6 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
                 ${walletBalance}
               </span>
             </Link>
-
-            {/* Insignia del Código de Usuario BOT-IXXXXXX */}
-            <div
-              onClick={handleCopyBotCode}
-              title="Haz clic para copiar tu código único de recarga"
-              className={`w-full flex items-center ${
-                collapsed ? "lg:flex-col lg:justify-center lg:px-1 lg:py-2 gap-0.5" : "justify-between px-3.5 py-2"
-              } rounded-xl bg-[#171A20] border border-[#229ED9]/35 hover:border-[#229ED9] transition-all cursor-pointer`}
-            >
-              <span className={`text-[10px] font-bold text-neutral-400 uppercase tracking-wider ${collapsed ? "lg:hidden" : "inline"}`}>
-                Mi Código:
-              </span>
-              <span className="flex items-center gap-1.5 font-mono font-black text-[#229ED9] text-xs">
-                <span className={collapsed ? "lg:text-[9px]" : "text-xs"}>{botCode}</span>
-                {copiedCode ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                ) : (
-                  <Copy className={`w-3 h-3 text-neutral-400 ${collapsed ? "lg:hidden" : "inline"}`} />
-                )}
-              </span>
-            </div>
           </div>
 
           {/* Links de Navegación del Cliente */}

@@ -323,6 +323,13 @@ export async function runCampaignBroadcast(
       },
     });
 
+    // Si en esta ronda ya se cumplió el total de publicaciones del día y el tiempo había vencido,
+    // re-evaluar membresía para cobrar renovación automática de Wallet o pausar tras cumplir el ciclo
+    const sentInRound = results.filter((r) => r.status === "SENT").length;
+    if (sentTodayCount + sentInRound >= maxDailyLimit) {
+      await validateUserSubscription(campaign.userId);
+    }
+
     return {
       success: results.some((r) => r.status === "SENT"),
       results,
@@ -347,6 +354,8 @@ export async function runCampaignBroadcast(
 /**
  * Procesador 24/7 para ejecutar todas las campañas activas cuya hora programada (nextRunAt) haya llegado.
  * Escalonado para nunca ejecutar dos campañas del mismo usuario en el mismo segundo.
+ * Si la suscripción venció pero el usuario tiene saldo en su Wallet (o aún no termina las publicaciones de hoy),
+ * validateUserSubscription renovará automáticamente la membresía con su Wallet o pausará cuando cumpla el ciclo.
  */
 export async function processDueCampaigns(): Promise<{
   processedCount: number;
@@ -363,10 +372,6 @@ export async function processDueCampaigns(): Promise<{
       ],
       user: {
         isActive: true,
-        subscription: {
-          status: { in: ["ACTIVE", "TRIAL"] },
-          expiresAt: { gt: now },
-        },
       },
     },
     orderBy: { nextRunAt: "asc" },

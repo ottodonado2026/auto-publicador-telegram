@@ -6,18 +6,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Users, Send, CreditCard, 
-  BookOpen, LogOut, Radio, Sun, Moon, ExternalLink, Database,
-  ChevronLeft, ChevronRight, Menu, X
+  BookOpen, LogOut, Radio, Sun, Moon, Database,
+  ChevronLeft, ChevronRight, Menu, X, Wallet
 } from "lucide-react";
 
 const navigation = [
   { name: "Resumen General", href: "/admin", icon: LayoutDashboard },
+  { name: "Recargar Wallet (BOT-I)", href: "/admin/wallet", icon: Wallet },
   { name: "Gestión de Clientes", href: "/admin/users", icon: Users },
   { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
   { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
   { name: "Base de Datos de Grupos", href: "/admin/groups", icon: Database },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
-  { name: "Ver Portal Cliente", href: "/dashboard", icon: ExternalLink },
 ];
 
 export default function AdminSidebar() {
@@ -71,11 +71,11 @@ export default function AdminSidebar() {
         </div>
 
         <Link
-          href="/dashboard"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#229ED9]/20 border border-[#229ED9]/40 text-xs font-black text-[#229ED9]"
+          href="/admin/wallet"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-xs font-black text-emerald-400"
         >
-          <ExternalLink className="w-3.5 h-3.5" />
-          <span>Portal Cliente</span>
+          <Wallet className="w-3.5 h-3.5" />
+          <span>Recargar BOT-I</span>
         </Link>
       </div>
 

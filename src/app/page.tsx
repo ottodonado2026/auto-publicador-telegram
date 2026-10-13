@@ -860,6 +860,15 @@ export default function LandingPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Registrar visita real en la base de datos para métricas de SuperAdmin
+  useEffect(() => {
+    fetch("/api/analytics/visit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "/" }),
+    }).catch(() => {});
+  }, []);
+
   const t = TRANSLATIONS[lang];
   const selectedCurrency = CURRENCIES.find((c) => c.code === currencyCode) || CURRENCIES[0];
 
