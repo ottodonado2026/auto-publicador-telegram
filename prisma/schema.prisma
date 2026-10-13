@@ -253,4 +253,19 @@ model ReferralBonus {
   @@map("referral_bonuses")
 }
 
+model ReferralConfig {
+  id               String   @id @default("default")
+  bronzeMinRefs    Int      @default(1)
+  bronzePercent    Float    @default(10.0)
+  silverMinRefs    Int      @default(5)
+  silverPercent    Float    @default(15.0)
+  goldMinRefs      Int      @default(15)
+  goldPercent      Float    @default(20.0)
+  retentionDays    Int      @default(7)
+  isActive         Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  @@map("referral_configs")
+}
+
 

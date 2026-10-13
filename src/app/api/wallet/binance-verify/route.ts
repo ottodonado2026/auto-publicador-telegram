@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyAdminPaymentReceived } from "@/lib/adminNotifier";
+import { getReferralConfig, computeUserTier } from "@/lib/referralTiers";
 
 export const dynamic = "force-dynamic";
 
@@ -324,8 +325,17 @@ export async function POST(req: NextRequest) {
         });
 
         if (user.referredById) {
-          const bonusGen = Number((amountNum * 0.10).toFixed(2));
+          const config = await getReferralConfig();
+          const referrerUser = await tx.user.findUnique({
+            where: { id: user.referredById },
+            include: { referrals: { select: { id: true } } },
+          });
+          const refsCount = referrerUser?.referrals.length || 1;
+          const tier = computeUserTier(refsCount, config);
+          const bonusPercent = tier.percentage / 100;
+          const bonusGen = Number((amountNum * bonusPercent).toFixed(2));
           if (bonusGen > 0) {
+            const releaseDays = config.retentionDays || 7;
             await tx.referralBonus.create({
               data: {
                 referrerId: user.referredById,
@@ -333,7 +343,7 @@ export async function POST(req: NextRequest) {
                 amountUSD: bonusGen,
                 sourceTxAmount: amountNum,
                 status: "PENDING",
-                releaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                releaseDate: new Date(Date.now() + releaseDays * 24 * 60 * 60 * 1000),
               },
             });
             await tx.user.update({
@@ -439,8 +449,17 @@ export async function POST(req: NextRequest) {
       });
 
       if (user.referredById) {
-        const bonusGen = Number((amountNum * 0.10).toFixed(2));
+        const config = await getReferralConfig();
+        const referrerUser = await tx.user.findUnique({
+          where: { id: user.referredById },
+          include: { referrals: { select: { id: true } } },
+        });
+        const refsCount = referrerUser?.referrals.length || 1;
+        const tier = computeUserTier(refsCount, config);
+        const bonusPercent = tier.percentage / 100;
+        const bonusGen = Number((amountNum * bonusPercent).toFixed(2));
         if (bonusGen > 0) {
+          const releaseDays = config.retentionDays || 7;
           await tx.referralBonus.create({
             data: {
               referrerId: user.referredById,
@@ -448,7 +467,7 @@ export async function POST(req: NextRequest) {
               amountUSD: bonusGen,
               sourceTxAmount: amountNum,
               status: "PENDING",
-              releaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              releaseDate: new Date(Date.now() + releaseDays * 24 * 60 * 60 * 1000),
             },
           });
           await tx.user.update({

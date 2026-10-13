@@ -5,8 +5,32 @@ import { useTheme } from "@/context/ThemeContext";
 import {
   Users, Sparkles, Copy, Check, Share2, Wallet,
   Clock, CheckCircle2, AlertCircle, ArrowUpRight, ShieldCheck,
-  Send, ExternalLink, HelpCircle
+  Send, ExternalLink, HelpCircle, Award, Flame, Gift, ChevronRight, Zap
 } from "lucide-react";
+
+interface ReferralTierInfo {
+  code: string;
+  name: string;
+  badge: string;
+  color: string;
+  percentage: number;
+  perks: string[];
+  currentCount: number;
+  targetCount: number;
+  progressPercent: number;
+  nextTierName: string | null;
+  neededForNext: number;
+}
+
+interface ReferralConfigInfo {
+  bronzeMinRefs: number;
+  bronzePercent: number;
+  silverMinRefs: number;
+  silverPercent: number;
+  goldMinRefs: number;
+  goldPercent: number;
+  retentionDays: number;
+}
 
 interface ReferralData {
   botCode: string;
@@ -15,6 +39,8 @@ interface ReferralData {
   totalPendingUSD: number;
   totalReleasedUSD: number;
   walletBalance: number;
+  tier?: ReferralTierInfo;
+  config?: ReferralConfigInfo;
   referrals: Array<{
     id: string;
     storeName: string | null;
@@ -40,6 +66,10 @@ export default function ReferralsPage() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Simulador de ganancias
+  const [simGuests, setSimGuests] = useState(5);
+  const [simPlanPrice, setSimPlanPrice] = useState(13.5);
 
   const fetchReferrals = async () => {
     try {
@@ -83,21 +113,41 @@ export default function ReferralsPage() {
     ? "bg-[#1E2229] border-[#2D3340]"
     : "bg-white border-slate-300 shadow-sm";
 
+  // Calcular porcentaje simulado según invitados
+  const config = data?.config || {
+    bronzeMinRefs: 1,
+    bronzePercent: 10,
+    silverMinRefs: 5,
+    silverPercent: 15,
+    goldMinRefs: 15,
+    goldPercent: 20,
+    retentionDays: 7,
+  };
+
+  const simPercent =
+    simGuests >= config.goldMinRefs
+      ? config.goldPercent
+      : simGuests >= config.silverMinRefs
+      ? config.silverPercent
+      : config.bronzePercent;
+
+  const simMonthlyBonus = (simGuests * simPlanPrice * (simPercent / 100)).toFixed(2);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* HEADER */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#229ED9]/15 border border-[#229ED9]/30 text-[#229ED9]">
-              Gana 10% de Cada Recarga
+              ¡Haz que tu bot sea 100% GRATIS!
             </span>
           </div>
           <h1 className={`text-2xl font-black mt-1 ${isDark ? "text-white" : "text-slate-900"}`}>
-            Programa de Referidos & Bonos Semanales
+            Programa de Referidos & Niveles de Afiliado
           </h1>
           <p className={`text-xs mt-1 max-w-2xl leading-relaxed ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
-            Comparte tu enlace exclusivo con amigos o colegas que vendan por Telegram. Cada vez que ellos recarguen por Binance Pay, ganas el <strong>10%</strong> en bonos que se liberan automáticamente cada semana directo a tu Wallet.
+            Invita a colegas que vendan por Telegram. Con cada recarga que ellos hagan por Binance Pay acumulas comisiones del <strong>10% al 20%</strong> en tu Wallet. ¡Con solo 5 amigos activos tu membresía mensual se paga completamente sola!
           </p>
         </div>
 
@@ -111,6 +161,70 @@ export default function ReferralsPage() {
           </div>
         </div>
       </div>
+
+      {/* BANNER DE RANGO ACTUAL & PROGRESO DEL USUARIO */}
+      {data?.tier && (
+        <div className={`p-6 rounded-3xl border relative overflow-hidden ${
+          data.tier.code === "GOLD"
+            ? isDark
+              ? "bg-gradient-to-r from-amber-950/40 via-[#1E2229] to-[#1E2229] border-amber-500/40"
+              : "bg-gradient-to-r from-amber-100/70 via-white to-amber-50 border-amber-400"
+            : data.tier.code === "SILVER"
+            ? isDark
+              ? "bg-gradient-to-r from-slate-800/40 via-[#1E2229] to-[#1E2229] border-slate-400/40"
+              : "bg-gradient-to-r from-slate-100 via-white to-sky-50 border-slate-300"
+            : isDark
+            ? "bg-gradient-to-r from-orange-950/30 via-[#1E2229] to-[#1E2229] border-orange-500/30"
+            : "bg-gradient-to-r from-orange-50 via-white to-amber-50 border-orange-300"
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                  Tu Rango Actual en la Plataforma
+                </span>
+                <span className={`px-3 py-0.5 rounded-full text-xs font-black uppercase ${
+                  data.tier.code === "GOLD"
+                    ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
+                    : data.tier.code === "SILVER"
+                    ? "bg-slate-400/20 text-slate-300 border border-slate-400/30"
+                    : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                }`}>
+                  {data.tier.badge}
+                </span>
+              </div>
+
+              <h2 className="text-xl font-black mt-2">
+                Recibes el <span className="text-emerald-400 font-mono text-2xl">+{data.tier.percentage}%</span> de cada pago que hagan tus invitados
+              </h2>
+
+              <p className={`text-xs mt-1 max-w-xl ${isDark ? "text-neutral-300" : "text-neutral-600"}`}>
+                {data.tier.neededForNext > 0
+                  ? `Tienes ${data.totalReferrals} referidos activos. Te faltan solo ${data.tier.neededForNext} para ascender a ${data.tier.nextTierName}.`
+                  : "¡Felicidades! Has alcanzado el rango máximo de Embajador VIP con la comisión más alta."}
+              </p>
+            </div>
+
+            {/* Barra de progreso */}
+            <div className="w-full md:w-72 flex-shrink-0 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-neutral-400">Progreso de Rango</span>
+                <span className="font-mono text-[#229ED9]">{data.tier.progressPercent}%</span>
+              </div>
+              <div className="w-full h-3 rounded-full bg-neutral-700/30 overflow-hidden p-0.5 border border-neutral-600/30">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#229ED9] to-emerald-400 transition-all duration-500"
+                  style={{ width: `${Math.max(8, data.tier.progressPercent)}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-neutral-400 flex items-center justify-between">
+                <span>{data.totalReferrals} referidos</span>
+                <span>Meta: {data.tier.targetCount}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TARJETA PRINCIPAL DEL ENLACE DE REFERIDO */}
       <div className={`p-6 rounded-3xl border relative overflow-hidden ${cardBg}`}>
@@ -168,13 +282,231 @@ export default function ReferralsPage() {
         </div>
       </div>
 
+      {/* ESTRUCTURA VISUAL DE LOS 3 NIVELES Y BENEFICIOS */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Award className="w-5 h-5 text-purple-400" />
+          <h2 className="text-base font-black">Estructura de Niveles & Beneficios Exclusivos</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* BRONCE */}
+          <div className={`p-6 rounded-3xl border flex flex-col justify-between transition-all ${
+            data?.tier?.code === "BRONZE"
+              ? isDark ? "bg-[#1E2229] border-orange-500 ring-2 ring-orange-500/30" : "bg-white border-orange-500 ring-2 ring-orange-500/30"
+              : isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+          }`}>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-black text-orange-400">🥉 Nivel Bronce</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-400/15 text-orange-400">
+                  {config.bronzeMinRefs} a {config.silverMinRefs - 1} amigos
+                </span>
+              </div>
+
+              <div className="text-3xl font-black font-mono text-emerald-400 mb-1">
+                {config.bronzePercent}%
+              </div>
+              <div className="text-[11px] text-neutral-400 mb-4">comisión por cada recarga</div>
+
+              <ul className="space-y-2.5 text-xs">
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Comisión fija en cada pago de tus invitados</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Liberación semanal a tu Wallet</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Enlace con código único vitalicio</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-neutral-700/20 text-[11px] text-neutral-400 font-semibold">
+              Requisito: {config.bronzeMinRefs} referido activo
+            </div>
+          </div>
+
+          {/* PLATA */}
+          <div className={`p-6 rounded-3xl border flex flex-col justify-between transition-all relative ${
+            data?.tier?.code === "SILVER"
+              ? isDark ? "bg-[#1E2229] border-slate-300 ring-2 ring-slate-300/40" : "bg-white border-slate-400 ring-2 ring-slate-400/40"
+              : isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+          }`}>
+            <span className="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+              ¡Tu Bot Gratis!
+            </span>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-black text-slate-300">🥈 Nivel Plata</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-400/15 text-slate-300">
+                  {config.silverMinRefs} a {config.goldMinRefs - 1} amigos
+                </span>
+              </div>
+
+              <div className="text-3xl font-black font-mono text-emerald-400 mb-1">
+                {config.silverPercent}%
+              </div>
+              <div className="text-[11px] text-neutral-400 mb-4">comisión por cada recarga</div>
+
+              <ul className="space-y-2.5 text-xs">
+                <li className="flex items-start gap-2 text-neutral-300 font-bold">
+                  <Gift className="w-3.5 h-3.5 text-[#229ED9] flex-shrink-0 mt-0.5" />
+                  <span className="text-[#229ED9]">Desbloqueo de 1 Cuenta de Telegram Extra de regalo</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Tu plan mensual queda 100% cubierto con 5 amigos</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Notificaciones prioritarias de comisiones</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-neutral-700/20 text-[11px] text-[#229ED9] font-bold">
+              Requisito: {config.silverMinRefs} referidos activos
+            </div>
+          </div>
+
+          {/* ORO EMBAJADOR */}
+          <div className={`p-6 rounded-3xl border flex flex-col justify-between transition-all ${
+            data?.tier?.code === "GOLD"
+              ? isDark ? "bg-[#1E2229] border-amber-400 ring-2 ring-amber-400/40" : "bg-white border-amber-400 ring-2 ring-amber-400/40"
+              : isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+          }`}>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-black text-amber-400">🥇 Oro Embajador</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-400/20 text-amber-400">
+                  {config.goldMinRefs}+ amigos VIP
+                </span>
+              </div>
+
+              <div className="text-3xl font-black font-mono text-amber-400 mb-1">
+                {config.goldPercent}%
+              </div>
+              <div className="text-[11px] text-neutral-400 mb-4">comisión máxima de la plataforma</div>
+
+              <ul className="space-y-2.5 text-xs">
+                <li className="flex items-start gap-2 text-neutral-300 font-bold">
+                  <Award className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-amber-300">Insignia exclusiva de Embajador VIP en tu perfil</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Canal directo y prioritario con la administración</span>
+                </li>
+                <li className="flex items-start gap-2 text-neutral-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <span>Capacidad de activar planes para revender a tus clientes</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-neutral-700/20 text-[11px] text-amber-400 font-bold">
+              Requisito: {config.goldMinRefs} referidos activos
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SIMULADOR DE GANANCIAS */}
+      <div className={`p-6 rounded-3xl border ${cardBg}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-black">Simulador: Calcula tus Ganancias Mensuales</h3>
+            </div>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Descubre cuánto saldo acumularás en tu billetera según el número de personas que invites.
+            </p>
+          </div>
+
+          <div className="text-right">
+            <span className="text-[11px] font-bold text-neutral-400">Ganancia mensual estimada:</span>
+            <div className="text-2xl font-black font-mono text-emerald-400">
+              +${simMonthlyBonus} USD
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+          <div>
+            <label className="block text-xs font-bold text-neutral-400 mb-1.5">
+              Número de Amigos Invitados: <span className="text-[#229ED9]">{simGuests} personas</span>
+            </label>
+            <input
+              type="range"
+              min={1}
+              max={30}
+              value={simGuests}
+              onChange={(e) => setSimGuests(parseInt(e.target.value))}
+              className="w-full accent-[#229ED9] cursor-pointer"
+            />
+            <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
+              <span>1 amigo</span>
+              <span>15 amigos (Oro)</span>
+              <span>30 amigos</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-neutral-400 mb-1.5">
+              Plan que contratan: <span className="text-emerald-400">${simPlanPrice} USD</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setSimPlanPrice(7.0)}
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                  simPlanPrice === 7.0
+                    ? "bg-[#229ED9] text-white border-[#229ED9]"
+                    : "bg-neutral-800/40 text-neutral-300 border-neutral-700/50"
+                }`}
+              >
+                Semanal ($7)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimPlanPrice(13.5)}
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                  simPlanPrice === 13.5
+                    ? "bg-[#229ED9] text-white border-[#229ED9]"
+                    : "bg-neutral-800/40 text-neutral-300 border-neutral-700/50"
+                }`}
+              >
+                15 Días ($13.5)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSimPlanPrice(25.0)}
+                className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                  simPlanPrice === 25.0
+                    ? "bg-[#229ED9] text-white border-[#229ED9]"
+                    : "bg-neutral-800/40 text-neutral-300 border-neutral-700/50"
+                }`}
+              >
+                Mensual ($25)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* METRICAS DE BONOS & REFERIDOS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* TOTAL REFERIDOS */}
         <div className={`p-5 rounded-2xl border ${cardBg}`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400">
-              Negocios Referidos
+              Amigos Vinculados
             </span>
             <div className="w-8 h-8 rounded-xl bg-[#229ED9]/15 text-[#229ED9] flex items-center justify-center">
               <Users className="w-4 h-4" />
@@ -190,7 +522,7 @@ export default function ReferralsPage() {
         <div className={`p-5 rounded-2xl border ${cardBg}`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black uppercase tracking-wider text-amber-500">
-              Bonos en Espera (7 Días)
+              Bonos en Espera ({config.retentionDays} Días)
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
               <Clock className="w-4 h-4" />
@@ -239,7 +571,7 @@ export default function ReferralsPage() {
                 <th className="py-3 px-4 font-black">Fecha</th>
                 <th className="py-3 px-4 font-black">Negocio Invitado</th>
                 <th className="py-3 px-4 font-black text-right">Recarga Binance</th>
-                <th className="py-3 px-4 font-black text-right">Comisión 10%</th>
+                <th className="py-3 px-4 font-black text-right">Comisión Asignada</th>
                 <th className="py-3 px-4 font-black text-center">Estado</th>
               </tr>
             </thead>
@@ -310,8 +642,8 @@ export default function ReferralsPage() {
           </div>
 
           <div className={`p-4 rounded-2xl border ${isDark ? "bg-[#13161C] border-[#282E3B] text-neutral-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}>
-            <div className="font-black text-amber-500 mb-1">2. Liberación a los 7 Días</div>
-            Cada bono generado entra a un ciclo de protección de 7 días. Transcurrida la semana, el sistema transfiere los fondos automáticamente a tu saldo disponible.
+            <div className="font-black text-amber-500 mb-1">2. Liberación Semanal</div>
+            Cada bono generado entra a un ciclo de protección de {config.retentionDays} días. Transcurrida la semana, el sistema transfiere los fondos automáticamente a tu saldo disponible en Wallet.
           </div>
 
           <div className={`p-4 rounded-2xl border ${isDark ? "bg-[#13161C] border-[#282E3B] text-neutral-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}>

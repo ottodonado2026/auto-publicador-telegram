@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Send, CreditCard,
   BookOpen, LogOut, Radio, Sun, Moon, Database,
   ChevronLeft, ChevronRight, Menu, X, Wallet,
-  CreditCard as PayIcon, Activity, Bell, CheckCheck
+  CreditCard as PayIcon, Activity, Bell, CheckCheck, Award
 } from "lucide-react";
 
 const navigation = [
@@ -19,6 +19,7 @@ const navigation = [
   { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
   { name: "Base de Datos de Grupos", href: "/admin/groups", icon: Database },
   { name: "Pagos / Binance Pay", href: "/admin/payments", icon: PayIcon },
+  { name: "Control de Referidos & Rangos", href: "/admin/referrals", icon: Award },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
   { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
 ];

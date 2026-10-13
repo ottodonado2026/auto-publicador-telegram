@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getReferralConfig, computeUserTier } from "@/lib/referralTiers";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,9 @@ export async function GET() {
       0
     );
 
+    const config = await getReferralConfig();
+    const userTier = computeUserTier(totalReferrals, config);
+
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL || "https://auto-publicador-telegram.vercel.app";
     const referralLink = `${baseUrl}/login?ref=${user.botCode || "BOT-PRO"}`;
@@ -73,6 +77,8 @@ export async function GET() {
       totalPendingUSD,
       totalReleasedUSD,
       walletBalance: Number(user.walletBalance || 0),
+      tier: userTier,
+      config,
       referrals: user.referrals,
       bonuses: user.referralBonuses.map((b) => ({
         id: b.id,

@@ -1570,6 +1570,136 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SECCIÓN VIRAL: HAZ QUE TU BOT SEA 100% GRATIS (PROGRAMA DE EMBAJADORES & NIVELES) */}
+      <section id="embajadores" className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className={`rounded-3xl p-8 sm:p-11 border-2 relative overflow-hidden shadow-2xl ${
+          isDark
+            ? "bg-gradient-to-b from-[#181C24] via-[#1B2230] to-[#14171F] border-purple-500/30"
+            : "bg-gradient-to-b from-purple-50/60 via-white to-sky-50/60 border-purple-300"
+        }`}>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#229ED9]/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 text-center max-w-3xl mx-auto mb-10">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30 text-[11px] font-black uppercase tracking-wider mb-3">
+              <Sparkles className="w-3.5 h-3.5" />
+              PROGRAMA DE EMBAJADORES • BENEFICIO EXCLUSIVO
+            </span>
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight">
+              ¿Quieres que tu Bot y tu Membresía te salgan <span className="text-emerald-400 underline decoration-emerald-500/40">100% GRATIS</span> todos los meses?
+            </h2>
+            <p className={`mt-3 text-xs sm:text-sm font-medium leading-relaxed ${isDark ? "text-neutral-300" : "text-slate-600"}`}>
+              Con nuestro sistema de <strong>Rangos Progresivos</strong>, comparte tu enlace exclusivo con amigos, proveedores o clientes que vendan por Telegram. Con cada recarga que ellos hagan por Binance Pay, recibes del <strong>10% al 20%</strong> de comisión directo a tu Wallet para pagar tus propios planes y cuentas extra.
+            </p>
+          </div>
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {/* BRONCE */}
+            <div className={`p-6 rounded-3xl border flex flex-col justify-between transition-all ${
+              isDark ? "bg-[#13161C]/90 border-amber-600/30" : "bg-white border-amber-200 shadow-md"
+            }`}>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-base font-black text-amber-500 flex items-center gap-1.5">
+                    🥉 Rango Bronce
+                  </span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500">
+                    1 a 4 Amigos
+                  </span>
+                </div>
+                <div className="text-3xl font-black font-mono text-emerald-400 mb-1">
+                  10%
+                </div>
+                <div className="text-[11px] text-neutral-400 mb-4">Comisión por cada pago de tus referidos</div>
+                <ul className="space-y-2 text-xs font-semibold">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Enlace con tu código BOT de por vida</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Liberación semanal a tu Wallet</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* PLATA */}
+            <div className={`p-6 rounded-3xl border-2 flex flex-col justify-between transition-all relative ${
+              isDark ? "bg-[#161B24]/90 border-[#229ED9] ring-2 ring-[#229ED9]/20" : "bg-white border-[#229ED9] shadow-xl ring-2 ring-[#229ED9]/20"
+            }`}>
+              <span className="absolute -top-3.5 right-6 px-3 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg">
+                🔥 ¡Tu Bot te sale Gratis!
+              </span>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-base font-black text-[#229ED9] flex items-center gap-1.5">
+                    🥈 Rango Plata
+                  </span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#229ED9]/15 text-[#229ED9]">
+                    5 a 14 Amigos
+                  </span>
+                </div>
+                <div className="text-3xl font-black font-mono text-emerald-400 mb-1">
+                  15%
+                </div>
+                <div className="text-[11px] text-neutral-400 mb-4">Comisión por cada pago de tus referidos</div>
+                <ul className="space-y-2 text-xs font-semibold">
+                  <li className="flex items-center gap-2 font-black text-purple-400">
+                    <Sparkles className="w-4 h-4 flex-shrink-0" />
+                    <span>+1 Cuenta de Telegram Extra de Regalo</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Tu plan mensual PRO queda 100% pagado</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* ORO EMBAJADOR */}
+            <div className={`p-6 rounded-3xl border flex flex-col justify-between transition-all ${
+              isDark ? "bg-[#13161C]/90 border-amber-400/40" : "bg-white border-amber-300 shadow-md"
+            }`}>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-base font-black text-amber-400 flex items-center gap-1.5">
+                    🥇 Oro Embajador
+                  </span>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-400">
+                    15+ Amigos VIP
+                  </span>
+                </div>
+                <div className="text-3xl font-black font-mono text-amber-400 mb-1">
+                  20%
+                </div>
+                <div className="text-[11px] text-neutral-400 mb-4">Comisión máxima de la plataforma</div>
+                <ul className="space-y-2 text-xs font-semibold">
+                  <li className="flex items-center gap-2 font-black text-amber-400">
+                    <Award className="w-4 h-4 flex-shrink-0" />
+                    <span>Insignia oficial de Embajador VIP</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>Soporte prioritario y saldo para revender</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+            <Link
+              href="/login?mode=register"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#229ED9] to-purple-600 hover:from-blue-600 hover:to-purple-500 text-white text-xs sm:text-sm font-black transition-all shadow-xl shadow-purple-600/25 flex items-center justify-center gap-2"
+            >
+              <span>Crear Cuenta y Obtener mi Enlace de Embajador</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* COBERTURA EN TODA LATINOAMÉRICA Y EL MUNDO */}
       <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div
