@@ -340,11 +340,11 @@ export default function AdminUsersPage() {
                     <div className="inline-flex items-center justify-end gap-1">
                       <button
                         disabled={actionLoading === u.id}
-                        onClick={() => handleCreditWallet(u.id, 1.25)}
+                        onClick={() => handleCreditWallet(u.id, 1.50)}
                         className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-black rounded-lg transition-colors cursor-pointer"
-                        title="Acreditar $1.25 USD"
+                        title="Acreditar $1.50 USD"
                       >
-                        +$1.25
+                        +$1.50
                       </button>
                       <button
                         disabled={actionLoading === u.id}

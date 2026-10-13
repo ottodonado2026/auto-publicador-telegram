@@ -34,13 +34,13 @@ html.sidebar-collapsed {
 
 /* Estilos de Tema Oscuro y Tema Claro Suave (Descanso Visual / Sin Brillo Incómodo) */
 html.dark {
-  --bg-app: #12151B;
-  --bg-surface: #1E2229;
-  --bg-inner: #171A20;
-  --border-color: #2D3340;
-  --text-main: #FFFFFF;
+  --bg-app: #0F1319;
+  --bg-surface: #171C24;
+  --bg-inner: #12161D;
+  --border-color: #262E3D;
+  --text-main: #F1F5F9;
   --text-muted: #94A3B8;
-  --text-heading: #F8FAFC;
+  --text-heading: #FFFFFF;
 }
 
 html:not(.dark) {
@@ -69,12 +69,39 @@ html:not(.dark) .bg-\[\#F8FAFC\] {
   border-color: #CBD5E1 !important;
 }
 
+/* Tipografía SaaS Profesional en todo el sistema */
 body {
   background-color: var(--bg-app);
   color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+}
+
+button, a.rounded-xl, a.rounded-2xl {
+  font-family: var(--font-jakarta), var(--font-inter), sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.font-mono, code, pre {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+/* Refinar pesos font-black y font-extrabold para que no se vean toscos ni pesados */
+.font-black {
+  font-weight: 700 !important;
+}
+
+.font-extrabold {
+  font-weight: 600 !important;
 }
 
 /* Animación de levitación suave para logos y elementos flotantes */

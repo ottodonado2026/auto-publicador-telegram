@@ -14,19 +14,19 @@ const BINANCE_API_SECRET =
 const BINANCE_PAY_UID = process.env.BINANCE_PAY_UID || "1158258762";
 const BINANCE_PAY_USERNAME = process.env.BINANCE_PAY_USERNAME || "streamofi";
 
-const MIN_ALLOWED_AMOUNT_USD = 1.25;
+const MIN_ALLOWED_AMOUNT_USD = 1.50;
 
 const PLAN_PRICES: Record<
   string,
   { name: string; days: number; priceUSD: number; maxCampaigns: number; maxAccounts: number }
 > = {
-  "plan-1": { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.25, maxCampaigns: 2, maxAccounts: 1 },
+  "plan-1": { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.50, maxCampaigns: 2, maxAccounts: 1 },
   "plan-2": { name: "Plan Semanal (7 Días)", days: 7, priceUSD: 7.00, maxCampaigns: 3, maxAccounts: 1 },
   "plan-3": { name: "Plan Quincenal (15 Días)", days: 15, priceUSD: 13.50, maxCampaigns: 5, maxAccounts: 2 },
   "plan-4": { name: "Plan Mensual (30 Días)", days: 30, priceUSD: 24.00, maxCampaigns: 8, maxAccounts: 3 },
 };
 
-const SUPPORTED_STABLECOINS = ["USDT", "FDUSD", "USDC", "BUSD"];
+const SUPPORTED_STABLECOINS = ["USDT"];
 
 export async function GET() {
   return NextResponse.json({

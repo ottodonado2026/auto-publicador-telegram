@@ -78,7 +78,7 @@ export default function AdminGuidePage() {
               2
             </div>
             <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
-              Estructura de Tarifas ($1.25 base con descuento progresivo)
+              Estructura de Tarifas ($1.50 base con descuento progresivo)
             </h2>
           </div>
 
@@ -88,7 +88,7 @@ export default function AdminGuidePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs mb-4">
             {[
-              { label: "1 Día", price: "$1.25 USD", sub: "$1.25 / día", color: "" },
+              { label: "1 Día", price: "$1.50 USD", sub: "$1.50 / día", color: "" },
               { label: "7 Días", price: "$7.00 USD", sub: "$1.00 / día (-20%)", color: "text-emerald-400" },
               { label: "15 Días", price: "$13.50 USD", sub: "$0.90 / día (-28%)", color: "text-emerald-400" },
               { label: "30 Días", price: "$24.00 USD", sub: "$0.80 / día (-36%)", color: "text-[#229ED9]", highlight: true },

@@ -212,7 +212,7 @@ export default function AdminWalletRechargePage() {
                 Montos de planes:
               </span>
               {[
-                { label: "+$1.25 (Express 1d)", val: "1.25" },
+                { label: "+$1.50 (Express 1d)", val: "1.50" },
                 { label: "+$3.00 (Cuenta Extra)", val: "3.00" },
                 { label: "+$7.00 (Semanal 7d)", val: "7.00" },
                 { label: "+$13.50 (Quincenal 15d)", val: "13.50" },

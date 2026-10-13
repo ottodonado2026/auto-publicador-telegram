@@ -20,7 +20,7 @@ export function getPlanDetailsByRate(dailyRate: number) {
   if (dailyRate <= 1.05) {
     return { name: "Plan Semanal (7 Días)", days: 7, priceUSD: 7.0, dailyPostLimit: 200, maxGroups: 50, baseMaxAccounts: 1 };
   }
-  return { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.25, dailyPostLimit: 100, maxGroups: 25, baseMaxAccounts: 1 };
+  return { name: "Pase Express (1 Día)", days: 1, priceUSD: 1.50, dailyPostLimit: 100, maxGroups: 25, baseMaxAccounts: 1 };
 }
 
 /**
@@ -73,7 +73,7 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
   }
 
   // La fecha expiresAt ya se cumplió: verificamos primero si hoy estaba activo y aún no ha completado las publicaciones del día
-  const plan = getPlanDetailsByRate(Number(subscription.dailyRate || 1.25));
+  const plan = getPlanDetailsByRate(Number(subscription.dailyRate || 1.50));
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const [sentTodayCount, activeCampaignsCount] = await Promise.all([
@@ -110,7 +110,7 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
   let renewDays = 0;
   let renewPrice = 0;
   let renewName = "";
-  let newDailyRate = Number(subscription.dailyRate || 1.25);
+  let newDailyRate = Number(subscription.dailyRate || 1.50);
   let renewedMaxAccounts = plan.baseMaxAccounts;
 
   if (walletBalance >= plan.priceUSD + extraAccountsCost) {
@@ -126,11 +126,11 @@ export async function validateUserSubscription(userId: string): Promise<Membersh
     renewPrice = plan.priceUSD;
     renewName = plan.name;
     renewedMaxAccounts = plan.baseMaxAccounts;
-  } else if (walletBalance >= 1.25) {
+  } else if (walletBalance >= 1.50) {
     renewDays = 1;
-    renewPrice = 1.25;
+    renewPrice = 1.50;
     renewName = "Pase Express (1 Día)";
-    newDailyRate = 1.25;
+    newDailyRate = 1.50;
     renewedMaxAccounts = 1;
   }
 
