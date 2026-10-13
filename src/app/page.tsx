@@ -8,6 +8,7 @@ import {
   ArrowRight, Sparkles, Layers, BarChart3, Lock, RefreshCw,
   Sun, Moon, ChevronDown, Flame, Award, MessageSquare, HelpCircle, Play
 } from "lucide-react";
+import GalaxyBackground from "@/components/GalaxyBackground";
 
 type LangCode = "es" | "en" | "pt" | "fr";
 
@@ -929,10 +930,13 @@ export default function LandingPage() {
 
   return (
     <div
-      className={`min-h-screen transition-colors duration-300 ${
-        isDark ? "bg-[#0F1319] text-[#F1F5F9]" : "bg-[#E9ECF0] text-[#0F172A]"
+      className={`min-h-screen relative overflow-x-hidden transition-colors duration-300 ${
+        isDark ? "bg-[#0B0E14] text-[#F1F5F9]" : "bg-[#ECEEF2] text-[#0F172A]"
       }`}
     >
+      {/* Fondo Cósmico de Galaxia & Partículas Animadas */}
+      <GalaxyBackground />
+
       {/* BARRA SUPERIOR DE NAVEGACIÓN MINIMALISTA Y DESPEJADA */}
       <header
         className={`sticky top-0 z-50 backdrop-blur-md border-b transition-colors ${
@@ -941,17 +945,17 @@ export default function LandingPage() {
             : "bg-[#F4F6F9]/95 border-[#CBD5E1]"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Logo Limpio sin textos largos */}
-          <a href="#" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#229ED9] shadow-[0_4px_14px_rgba(34,158,217,0.35)] flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+          {/* Logo Limpio y Destacado */}
+          <a href="#" className="flex items-center gap-3 flex-shrink-0 group">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-[#229ED9] shadow-[0_0_25px_rgba(34,158,217,0.55)] flex-shrink-0 animate-float transition-transform group-hover:scale-105">
               <img src="/ottbot-logo.png" alt="OttBot PRO" className="w-full h-full object-cover" />
             </div>
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
-              <span className="font-black text-lg tracking-tight">
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="font-black text-xl sm:text-2xl tracking-tight">
                 Ott<span className="text-[#229ED9]">Bot</span>
               </span>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 uppercase">
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase shadow-xs">
                 PRO
               </span>
             </div>
@@ -1767,38 +1771,54 @@ export default function LandingPage() {
             : "bg-[#E2E6EC] border-[#CBD5E1] text-slate-600"
         }`}
       >
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <img src="/ottbot-logo.png" alt="OttBot" className="w-7 h-7 rounded-full border border-[#229ED9]" />
-            <span className="font-black">OttBot PRO</span>
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-[#229ED9] shadow-[0_0_15px_rgba(34,158,217,0.4)] overflow-hidden">
+              <img src="/ottbot-logo.png" alt="OttBot PRO" className="w-full h-full object-cover" />
+            </div>
+            <div className="text-left">
+              <span className="font-black text-base tracking-tight block">
+                Ott<span className="text-[#229ED9]">Bot</span> PRO
+              </span>
+              <span className="text-[10px] text-neutral-400 block font-medium">Plataforma Cloud 24/7</span>
+            </div>
           </div>
-          <p>{t.footer.rights}</p>
-          <div className="flex items-center gap-4">
-            <Link href="/login" className="text-[#229ED9] hover:underline font-bold">
+
+          <p className="text-xs font-medium">{t.footer.rights}</p>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-xl bg-[#229ED9]/15 text-[#229ED9] border border-[#229ED9]/30 font-black text-xs hover:bg-[#229ED9] hover:text-white transition-all shadow-sm"
+            >
               {t.nav.login}
             </Link>
-            <Link href="/login?mode=register" className="text-emerald-500 hover:underline font-bold">
-              {t.nav.freeTrial}
+            <Link
+              href="/login?mode=register"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{t.nav.freeTrial}</span>
             </Link>
           </div>
         </div>
       </footer>
 
-      {/* DOCK FLOTANTE INFERIOR DE ACCESO RÁPIDO (FUERA DEL MENÚ SUPERIOR) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md pointer-events-none">
+      {/* DOCK FLOTANTE INFERIOR DE ACCESO RÁPIDO */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-lg pointer-events-none">
         <div
-          className={`pointer-events-auto p-2 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-2 ${
+          className={`pointer-events-auto p-2.5 rounded-2xl border-2 backdrop-blur-2xl shadow-2xl flex items-center justify-between gap-3 ${
             isDark
-              ? "bg-[#141820]/95 border-[#2B3344] shadow-[0_12px_40px_rgba(0,0,0,0.65)]"
-              : "bg-white/95 border-slate-300 shadow-[0_12px_40px_rgba(15,23,42,0.18)]"
+              ? "bg-[#141820]/95 border-[#229ED9]/40 shadow-[0_12px_45px_rgba(34,158,217,0.35)]"
+              : "bg-white/95 border-[#229ED9]/50 shadow-[0_12px_45px_rgba(34,158,217,0.25)]"
           }`}
         >
           <Link
             href="/login"
-            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black text-center border transition-all whitespace-nowrap ${
+            className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-black text-center border-2 transition-all whitespace-nowrap shadow-sm ${
               isDark
                 ? "bg-[#1E232E] hover:bg-[#262D3B] border-[#323B4E] text-white"
-                : "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800"
+                : "bg-slate-900 hover:bg-slate-800 border-slate-900 text-white"
             }`}
           >
             {t.nav.login}
@@ -1806,9 +1826,9 @@ export default function LandingPage() {
 
           <Link
             href="/login?mode=register"
-            className="flex-[1.4] py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#229ED9] to-emerald-500 hover:from-sky-500 hover:to-emerald-400 text-white text-xs font-black text-center shadow-lg shadow-[#229ED9]/25 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+            className="flex-[1.5] py-3 px-5 rounded-xl bg-gradient-to-r from-[#229ED9] via-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-white text-xs sm:text-sm font-black text-center shadow-lg shadow-emerald-500/35 transition-all flex items-center justify-center gap-2 whitespace-nowrap active:scale-[0.99]"
           >
-            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            <Sparkles className="w-4 h-4 flex-shrink-0 animate-pulse" />
             <span>{t.nav.freeTrial}</span>
           </Link>
         </div>

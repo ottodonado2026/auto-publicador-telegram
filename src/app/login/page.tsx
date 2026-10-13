@@ -458,30 +458,26 @@ export default function ClientLoginPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                            isDark ? "text-neutral-400" : "text-neutral-600"
+                            isDark ? "text-neutral-300" : "text-slate-900"
                           }`}>
                             Tu Nombre, Marca o Proyecto *
                           </label>
                           <div className="relative">
-                            <UserIcon className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <UserIcon className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               required
                               placeholder="Ej. Carlos / Agencia Digital"
                               value={storeName}
                               onChange={(e) => setStoreName(e.target.value)}
-                              className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                                isDark
-                                  ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                  : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                              }`}
+                              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                             />
                           </div>
                         </div>
 
                         <div>
                           <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                            isDark ? "text-neutral-400" : "text-neutral-600"
+                            isDark ? "text-neutral-300" : "text-slate-900"
                           }`}>
                             Número Telegram (con indicativo) *
                           </label>
@@ -493,11 +489,7 @@ export default function ClientLoginPage() {
                               placeholder="+57 300 208 4859"
                               value={phoneNumber}
                               onChange={(e) => setPhoneNumber(e.target.value)}
-                              className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                                isDark
-                                  ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                  : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                              }`}
+                              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                             />
                           </div>
                         </div>
@@ -507,7 +499,7 @@ export default function ClientLoginPage() {
                       <div>
                         <div className="flex items-center justify-between mb-1 pl-0.5">
                           <label className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                            isDark ? "text-neutral-400" : "text-neutral-600"
+                            isDark ? "text-neutral-300" : "text-slate-900"
                           }`}>
                             Correo Electrónico (Obligatorio & Real) *
                           </label>
@@ -531,7 +523,7 @@ export default function ClientLoginPage() {
                         </div>
                         <div className="relative">
                           <Mail className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${
-                            email ? (isEmailValid ? "text-emerald-400" : "text-red-400") : "text-neutral-400"
+                            email ? (isEmailValid ? "text-emerald-400" : "text-red-400") : "text-[#229ED9]"
                           }`} />
                           <input
                             type="email"
@@ -539,14 +531,10 @@ export default function ClientLoginPage() {
                             placeholder="tu-correo-real@gmail.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all ${
+                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all bg-[#161B22] border-2 text-white placeholder:text-neutral-400 ${
                               email && !isEmailValid
-                                ? "border-red-500/50 focus:ring-red-500/30"
-                                : "focus:ring-[#229ED9]/30 focus:border-[#229ED9]"
-                            } ${
-                              isDark
-                                ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
+                                ? "border-red-500/60 focus:ring-red-500/30"
+                                : "border-[#2D333B] focus:ring-[#229ED9]/40 focus:border-[#229ED9]"
                             }`}
                           />
                         </div>
@@ -556,7 +544,7 @@ export default function ClientLoginPage() {
                       <div>
                         <div className="flex items-center justify-between mb-1 pl-0.5">
                           <label className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                            isDark ? "text-neutral-400" : "text-neutral-600"
+                            isDark ? "text-neutral-300" : "text-slate-900"
                           }`}>
                             Código de Invitación / Referido (Opcional)
                           </label>
@@ -574,11 +562,7 @@ export default function ClientLoginPage() {
                             placeholder="Ej: BOT-I129849"
                             value={refCode}
                             onChange={(e) => setRefCode(e.target.value.toUpperCase())}
-                            className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-mono font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                              isDark
-                                ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-600"
-                                : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                            }`}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-mono font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                           />
                         </div>
                       </div>
@@ -587,23 +571,19 @@ export default function ClientLoginPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                         <div>
                           <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                            isDark ? "text-neutral-400" : "text-neutral-600"
+                            isDark ? "text-neutral-300" : "text-slate-900"
                           }`}>
                             Contraseña *
                           </label>
                           <div className="relative">
-                            <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Lock className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type={showPassword ? "text" : "password"}
                               required
                               placeholder="Mínimo 6 caracteres"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
-                              className={`w-full pl-9 pr-10 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                                isDark
-                                  ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                  : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                              }`}
+                              className="w-full pl-9 pr-10 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                             />
                             <button
                               type="button"
@@ -618,7 +598,7 @@ export default function ClientLoginPage() {
                           {password && (
                             <div className="mt-1.5 px-0.5">
                               <div className="flex justify-between items-center text-[10px] mb-1">
-                                <span className="text-neutral-400">Seguridad:</span>
+                                <span className={isDark ? "text-neutral-400" : "text-slate-600 font-bold"}>Seguridad:</span>
                                 <span className={`font-bold ${passwordStrength.text}`}>
                                   {passwordStrength.label}
                                 </span>
@@ -636,7 +616,7 @@ export default function ClientLoginPage() {
                         <div>
                           <div className="flex items-center justify-between mb-1 pl-0.5">
                             <label className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                              isDark ? "text-neutral-400" : "text-neutral-600"
+                              isDark ? "text-neutral-300" : "text-slate-900"
                             }`}>
                               Confirmar Contraseña *
                             </label>
@@ -649,21 +629,17 @@ export default function ClientLoginPage() {
                             )}
                           </div>
                           <div className="relative">
-                            <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Lock className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type={showConfirmPassword ? "text" : "password"}
                               required
                               placeholder="Repite tu contraseña"
                               value={confirmPassword}
                               onChange={(e) => setConfirmPassword(e.target.value)}
-                              className={`w-full pl-9 pr-10 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all ${
+                              className={`w-full pl-9 pr-10 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 transition-all bg-[#161B22] border-2 text-white placeholder:text-neutral-400 ${
                                 confirmPassword && password !== confirmPassword
-                                  ? "border-red-500/50 focus:ring-red-500/30"
-                                  : "focus:ring-[#229ED9]/30 focus:border-[#229ED9]"
-                              } ${
-                                isDark
-                                  ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                  : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
+                                  ? "border-red-500/60 focus:ring-red-500/30"
+                                  : "border-[#2D333B] focus:ring-[#229ED9]/40 focus:border-[#229ED9]"
                               }`}
                             />
                             <button
@@ -680,15 +656,15 @@ export default function ClientLoginPage() {
 
                       <button
                         type="submit"
-                        disabled={loading || !isEmailValid || (confirmPassword.length > 0 && password !== confirmPassword)}
-                        className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+                        disabled={loading}
+                        className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-[#229ED9] via-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-700 text-white text-xs sm:text-sm font-black rounded-xl shadow-lg shadow-[#229ED9]/35 transition-all flex items-center justify-center gap-2 group cursor-pointer active:scale-[0.99]"
                       >
                         {loading ? (
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                           <>
                             <span>Crear Cuenta & Recibir Código Telegram</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                           </>
                         )}
                       </button>
@@ -698,46 +674,38 @@ export default function ClientLoginPage() {
                       {/* Vista Login (Sin la palabra "Tienda") */}
                       <div>
                         <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                          isDark ? "text-neutral-400" : "text-neutral-600"
+                          isDark ? "text-neutral-300" : "text-slate-900"
                         }`}>
                           Número de Telegram / Usuario / Correo
                         </label>
                         <div className="relative">
-                          <UserIcon className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <UserIcon className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             required
                             placeholder="+57 300... / Tu Nombre o Marca / correo@..."
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
-                            className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                              isDark
-                                ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                            }`}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                           />
                         </div>
                       </div>
 
                       <div>
                         <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                          isDark ? "text-neutral-400" : "text-neutral-600"
+                          isDark ? "text-neutral-300" : "text-slate-900"
                         }`}>
                           Contraseña
                         </label>
                         <div className="relative">
-                          <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Lock className="w-4 h-4 text-[#229ED9] absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type={showLoginPassword ? "text" : "password"}
                             required
                             placeholder="••••••••••••"
                             value={loginPassword}
                             onChange={(e) => setLoginPassword(e.target.value)}
-                            className={`w-full pl-9 pr-10 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${
-                              isDark
-                                ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-500"
-                                : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-400"
-                            }`}
+                            className="w-full pl-9 pr-10 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-400"
                           />
                           <button
                             type="button"
@@ -753,14 +721,14 @@ export default function ClientLoginPage() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black rounded-xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+                        className="w-full mt-3 py-3 px-4 bg-gradient-to-r from-[#229ED9] via-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-700 text-white text-xs sm:text-sm font-black rounded-xl shadow-lg shadow-[#229ED9]/35 transition-all flex items-center justify-center gap-2 group cursor-pointer active:scale-[0.99]"
                       >
                         {loading ? (
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                           <>
                             <span>Continuar con mi Cuenta</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                           </>
                         )}
                       </button>
@@ -772,18 +740,18 @@ export default function ClientLoginPage() {
               {/* PASO 2: Verificación de Código OTP de Telegram */}
               {step === "OTP" && (
                 <form onSubmit={handleOtpSubmit} className="space-y-3">
-                  <div className="text-center p-2.5 rounded-2xl bg-[#229ED9]/10 border border-[#229ED9]/30">
-                    <p className="text-xs font-bold text-[#229ED9]">
+                  <div className="text-center p-3 rounded-2xl bg-[#229ED9]/15 border border-[#229ED9]/30">
+                    <p className="text-xs font-black text-[#229ED9]">
                       Código enviado a tu Telegram
                     </p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5 font-mono">
+                    <p className="text-xs text-neutral-300 mt-0.5 font-mono font-bold">
                       {maskedPhone}
                     </p>
                   </div>
 
                   <div>
                     <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 text-center ${
-                      isDark ? "text-neutral-300" : "text-neutral-700"
+                      isDark ? "text-neutral-300" : "text-slate-900"
                     }`}>
                       Código de Telegram (5 Dígitos)
                     </label>
@@ -796,14 +764,10 @@ export default function ClientLoginPage() {
                         placeholder="12345"
                         value={phoneCode}
                         onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, ""))}
-                        className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-center font-mono font-black text-xl tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all ${
-                          isDark
-                            ? "bg-[#171A20] border-[#2B303C] text-white placeholder:text-neutral-600"
-                            : "bg-neutral-50 border-neutral-300 text-neutral-900 placeholder:text-neutral-300"
-                        }`}
+                        className="w-full pl-9 pr-3 py-3 rounded-xl text-center font-mono font-black text-xl tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-[#229ED9]/40 focus:border-[#229ED9] transition-all bg-[#161B22] border-2 border-[#2D333B] text-white placeholder:text-neutral-500"
                       />
                     </div>
-                    <span className={`text-[11px] text-center block mt-1.5 leading-relaxed ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+                    <span className={`text-[11px] text-center block mt-1.5 leading-relaxed font-medium ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
                       {infoMessage || (
                         <>Revisa tu notificación en Telegram (@streamzonesupport) o en Mensajes Guardados de tu cuenta OttBot.</>
                       )}
@@ -813,7 +777,7 @@ export default function ClientLoginPage() {
                   {require2fa && (
                     <div>
                       <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
-                        isDark ? "text-amber-400" : "text-amber-600"
+                        isDark ? "text-amber-400" : "text-amber-700 font-black"
                       }`}>
                         Contraseña 2FA de la Nube de Telegram
                       </label>
@@ -825,11 +789,7 @@ export default function ClientLoginPage() {
                           placeholder="Tu contraseña 2FA de Telegram"
                           value={password2fa}
                           onChange={(e) => setPassword2fa(e.target.value)}
-                          className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all ${
-                            isDark
-                              ? "bg-[#171A20] border-amber-500/40 text-white"
-                              : "bg-neutral-50 border-amber-500/40 text-neutral-900"
-                          }`}
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all bg-[#161B22] border-2 border-amber-500/40 text-white"
                         />
                       </div>
                     </div>
@@ -838,7 +798,7 @@ export default function ClientLoginPage() {
                   <button
                     type="submit"
                     disabled={loading || phoneCode.length < 4}
-                    className="w-full mt-1.5 py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+                    className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white text-xs sm:text-sm font-black rounded-xl shadow-lg shadow-emerald-500/35 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                   >
                     {loading ? (
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

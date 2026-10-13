@@ -19,10 +19,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("ottbot_theme") as Theme;
-    if (saved) {
-      setTheme(saved);
-      document.documentElement.classList.toggle("dark", saved === "dark");
+    if (saved === "light") {
+      setTheme("light");
+      document.documentElement.classList.remove("dark");
     } else {
+      setTheme("dark");
+      localStorage.setItem("ottbot_theme", "dark");
       document.documentElement.classList.add("dark");
     }
   }, []);
