@@ -5,7 +5,7 @@ import ClientSidebar from "@/components/ClientSidebar";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   CreditCard, CheckCircle2, Clock, Sparkles, 
-  ShieldCheck, Zap, Send, Tag, Wallet, ArrowUpRight, AlertCircle, History
+  ShieldCheck, Zap, Send, Tag, Wallet, ArrowUpRight, AlertCircle, History, PlusCircle
 } from "lucide-react";
 
 const CLIENT_PLANS = [
@@ -17,14 +17,14 @@ const CLIENT_PLANS = [
     dailyEquivalent: 1.25,
     description: "Difusión de 24 horas para promociones relámpago.",
     maxGroups: 15,
-    maxDailyPosts: 45,
+    maxDailyPosts: 50,
     maxCampaigns: 2,
     maxTelegramAccounts: 1,
     isPopular: false,
     features: [
       "Hasta 15 grupos de destino",
-      "Hasta 2 campañas / copys activos",
-      "45 publicaciones automáticas / día",
+      "Hasta 2 campañas activas simultáneas",
+      "50 publicaciones automáticas / día",
       "1 Cuenta de Telegram vinculada",
       "Intervalo de 60s antibaneo",
     ],
@@ -37,14 +37,14 @@ const CLIENT_PLANS = [
     dailyEquivalent: 1.00,
     description: "Tarifa reducida a solo $1.00/día. La opción más elegida.",
     maxGroups: 30,
-    maxDailyPosts: 120,
+    maxDailyPosts: 150,
     maxCampaigns: 3,
     maxTelegramAccounts: 1,
     isPopular: true,
     features: [
       "Hasta 30 grupos de destino",
-      "Hasta 3 campañas en rotación",
-      "120 publicaciones automáticas / día",
+      "Hasta 3 campañas activas en rotación",
+      "150 publicaciones automáticas / día",
       "1 Cuenta de Telegram o Granja OttBot",
       "Ahorro del 20% vs tarifa diaria",
     ],
@@ -63,7 +63,7 @@ const CLIENT_PLANS = [
     isPopular: false,
     features: [
       "Hasta 60 grupos de destino",
-      "Hasta 5 campañas en rotación",
+      "Hasta 5 campañas activas en rotación",
       "250 publicaciones automáticas / día",
       "⚡ Soporte hasta 2 Cuentas de Telegram",
       "Ahorro del 28%",
@@ -83,7 +83,7 @@ const CLIENT_PLANS = [
     isPopular: false,
     features: [
       "Hasta 100 grupos de destino",
-      "Hasta 8 campañas en rotación",
+      "Hasta 8 campañas activas en rotación",
       "500 publicaciones automáticas / día",
       "🔥 Soporte hasta 3 Cuentas de Telegram",
       "Ahorro máximo del 36%",
@@ -99,6 +99,7 @@ export default function ClientPlansPage() {
   const [membership, setMembership] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<any>(CLIENT_PLANS[1]);
   const [purchasing, setPurchasing] = useState(false);
+  const [purchasingAddon, setPurchasingAddon] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
   const [topupAmount, setTopupAmount] = useState<number>(10);
 
@@ -143,6 +144,30 @@ export default function ClientPlansPage() {
     }
   };
 
+  const handleBuyExtraAccount = async () => {
+    setFeedback(null);
+    setPurchasingAddon(true);
+
+    try {
+      const res = await fetch("/api/wallet/purchase-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addonType: "EXTRA_ACCOUNT" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Error al comprar cuenta adicional");
+      }
+
+      setFeedback({ message: data.message, isError: false });
+      await fetchUserData();
+    } catch (err: any) {
+      setFeedback({ message: err.message, isError: true });
+    } finally {
+      setPurchasingAddon(false);
+    }
+  };
+
   const walletBalance = Number(sessionUser?.walletBalance || 0);
   const transactions = sessionUser?.walletTransactions || [];
 
@@ -158,7 +183,7 @@ export default function ClientPlansPage() {
             Mi Billetera (Wallet) & Planes de Membresía
           </h1>
           <p className={`text-xs font-semibold mt-1.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-            Recarga saldo en tu Wallet para activar planes al instante con 1 clic o contrata directamente cualquier paquete.
+            Recarga saldo en tu Wallet para activar planes al instante con 1 clic o desbloquear cuentas adicionales de Telegram.
           </p>
         </div>
 
@@ -274,8 +299,8 @@ export default function ClientPlansPage() {
               isDark ? "bg-[#171A20] border-[#2D3340] text-neutral-300" : "bg-neutral-50 border-neutral-200 text-neutral-700"
             }`}>
               <div className="flex items-center justify-between font-bold mb-1">
-                <span>Campañas permitidas:</span>
-                <span className="text-[#229ED9]">Hasta {sessionUser?.subscription?.maxCampaigns || 3} campañas</span>
+                <span>Campañas activas permitidas:</span>
+                <span className="text-[#229ED9]">Hasta {sessionUser?.subscription?.maxCampaigns || 2} activas</span>
               </div>
               <div className="flex items-center justify-between font-bold">
                 <span>Cuentas Telegram:</span>
@@ -283,6 +308,39 @@ export default function ClientPlansPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ADD-ON: CUENTA ADICIONAL DE TELEGRAM POR $3.00 USD PAGO ÚNICO */}
+        <div className={`mb-8 rounded-3xl p-6 border-2 border-dashed flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md ${
+          isDark ? "bg-[#191D24] border-[#229ED9]/40" : "bg-sky-50/60 border-[#229ED9]/40"
+        }`}>
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#229ED9]/20 text-[#229ED9] flex items-center justify-center flex-shrink-0">
+              <PlusCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black">
+                  ¿Tienes el Pase Express o Semanal y quieres agregar otra Cuenta de Telegram?
+                </h3>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                  Pago Único
+                </span>
+              </div>
+              <p className={`text-xs mt-1 leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                Desbloquea <strong>+1 Cuenta Adicional de Telegram</strong> por solo <strong>$3.00 USD</strong>. Puedes usarla para publicar directamente desde tus números personales o alternar con nuestra Granja OttBot.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={purchasingAddon}
+            onClick={handleBuyExtraAccount}
+            className="px-5 py-3 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black rounded-2xl shadow-lg shadow-[#229ED9]/25 transition-all whitespace-nowrap cursor-pointer disabled:opacity-50"
+          >
+            {purchasingAddon ? "Activando..." : "Adicionar +1 Cuenta TG ($3.00 USD)"}
+          </button>
         </div>
 
         {/* Cuadrícula de 4 Planes (2x2) */}
@@ -338,6 +396,7 @@ export default function ClientPlansPage() {
 
                     <div className="text-right text-[11px] text-neutral-400 space-y-0.5">
                       <div>Máx. <strong>{plan.maxGroups} grupos</strong></div>
+                      <div><strong>{plan.maxDailyPosts} envíos</strong> / día</div>
                       <div>Hasta <strong>{plan.maxCampaigns} campañas</strong></div>
                       <div><strong>{plan.maxTelegramAccounts} cuenta(s)</strong> TG</div>
                     </div>

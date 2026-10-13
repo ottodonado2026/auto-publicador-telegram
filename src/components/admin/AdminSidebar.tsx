@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Users, Send, CreditCard, 
-  BookOpen, LogOut, Radio, Sun, Moon, ExternalLink
+  BookOpen, LogOut, Radio, Sun, Moon, ExternalLink, Database
 } from "lucide-react";
 
 const navigation = [
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Gestión de Clientes", href: "/admin/users", icon: Users },
   { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
   { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
+  { name: "Base de Datos de Grupos", href: "/admin/groups", icon: Database },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
   { name: "Ver Portal Cliente", href: "/dashboard", icon: ExternalLink },
 ];

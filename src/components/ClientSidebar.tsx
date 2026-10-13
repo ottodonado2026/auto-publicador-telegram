@@ -55,6 +55,22 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
           </div>
         </div>
 
+        {/* Tarjeta de Wallet Rápida Arriba de Gestión de Publicaciones */}
+        <div className="px-4 pt-4 pb-1">
+          <Link
+            href="/dashboard/plans"
+            className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-[#192524] to-[#171A20] border border-emerald-500/40 hover:border-emerald-400 shadow-lg shadow-emerald-950/30 transition-all group"
+          >
+            <span className="flex items-center gap-2 text-xs font-black text-emerald-400">
+              <Wallet className="w-4 h-4" />
+              <span>Mi Wallet:</span>
+            </span>
+            <span className="text-xs font-black text-white font-mono bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/30">
+              ${walletBalance} USD
+            </span>
+          </Link>
+        </div>
+
         {/* Links de Navegación del Cliente */}
         <nav className="p-4 space-y-1.5">
           <div className="px-3 py-1.5 text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
@@ -81,22 +97,8 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
         </nav>
       </div>
 
-      {/* Info Membresía, Wallet, Switcher de Tema y Usuario Dinámico */}
+      {/* Info Membresía, Switcher de Tema y Usuario Dinámico */}
       <div className="p-4 border-t border-[#2B303C] space-y-2.5">
-        {/* Tarjeta de Wallet Rápida */}
-        <Link
-          href="/dashboard/plans"
-          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-950/60 to-[#171A20] border border-emerald-500/30 hover:border-emerald-400 transition-all group"
-        >
-          <span className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-            <Wallet className="w-3.5 h-3.5" />
-            <span>Mi Wallet:</span>
-          </span>
-          <span className="text-xs font-black text-white font-mono">
-            ${walletBalance} USD
-          </span>
-        </Link>
-
         {/* Toggle Tema Claro / Oscuro para el Cliente */}
         <button
           onClick={toggleTheme}
@@ -134,7 +136,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Cerrar Sesión</span>

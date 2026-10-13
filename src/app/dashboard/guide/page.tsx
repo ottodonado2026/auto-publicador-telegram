@@ -181,9 +181,9 @@ export default function ClientGuidePage() {
                 <div className="text-lg font-black mt-1">$1.25 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
                   <div>• Hasta 15 grupos</div>
-                  <div>• 45 envíos / día</div>
-                  <div>• 1 Cuenta de Telegram</div>
-                  <div>• Granja o Cuenta Propia</div>
+                  <div>• <strong>50 envíos / día</strong></div>
+                  <div>• Hasta 2 Campañas Activas</div>
+                  <div>• 1 Cuenta TG (+Opción $3 extra)</div>
                 </div>
               </div>
 
@@ -194,8 +194,8 @@ export default function ClientGuidePage() {
                 <div className="text-lg font-black mt-1">$7.00 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
                   <div>• Hasta 30 grupos</div>
-                  <div>• 120 envíos / día</div>
-                  <div>• 1 Cuenta de Telegram</div>
+                  <div>• <strong>150 envíos / día</strong></div>
+                  <div>• Hasta 3 Campañas Activas</div>
                   <div>• $1.00 USD / día (20% OFF)</div>
                 </div>
               </div>
@@ -207,9 +207,9 @@ export default function ClientGuidePage() {
                 <div className="text-lg font-black mt-1">$13.50 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
                   <div>• Hasta 60 grupos</div>
-                  <div>• 250 envíos / día</div>
-                  <div>• <strong>Hasta 2 Cuentas</strong></div>
-                  <div>• $0.90 USD / día (28% OFF)</div>
+                  <div>• <strong>250 envíos / día</strong></div>
+                  <div>• Hasta 5 Campañas Activas</div>
+                  <div>• <strong>Hasta 2 Cuentas TG</strong></div>
                 </div>
               </div>
 
@@ -220,9 +220,9 @@ export default function ClientGuidePage() {
                 <div className="text-lg font-black mt-1">$24.00 USD</div>
                 <div className="mt-2.5 text-xs space-y-1.5 text-neutral-400 font-medium">
                   <div>• Hasta 100 grupos</div>
-                  <div>• 500 envíos / día</div>
-                  <div>• <strong>Hasta 3 Cuentas</strong></div>
-                  <div>• $0.80 USD / día (36% OFF)</div>
+                  <div>• <strong>500 envíos / día</strong></div>
+                  <div>• Hasta 8 Campañas Activas</div>
+                  <div>• <strong>Hasta 3 Cuentas TG</strong></div>
                 </div>
               </div>
             </div>

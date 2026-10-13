@@ -7,7 +7,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { 
   Bold, Italic, Quote, Code, CornerDownLeft, Sparkles, 
   Send, Upload, CheckCircle2, AlertCircle, X, Plus, Eye,
-  RefreshCw, Users, CheckSquare, Square, Layers, Copy, BookmarkCheck
+  RefreshCw, Users, CheckSquare, Square, Layers, Copy, BookmarkCheck,
+  Play, Pause, Trash2, Edit3
 } from "lucide-react";
 
 const TEMPLATES = [
@@ -74,10 +75,14 @@ export default function ClientCampaignsPage() {
       if (campData.campaigns) {
         setSavedCampaigns(campData.campaigns);
 
-        // Si viene de /dashboard con ?edit=id, precargar esa campaña para editar
+        // Si viene de /dashboard con ?edit=id o ?tab=LIBRARY
         if (typeof window !== "undefined") {
           const params = new URLSearchParams(window.location.search);
           const editId = params.get("edit");
+          const tabParam = params.get("tab");
+          if (tabParam === "LIBRARY") {
+            setActiveTab("LIBRARY");
+          }
           if (editId) {
             const targetCamp = campData.campaigns.find((item: any) => item.id === editId);
             if (targetCamp) {
@@ -100,6 +105,40 @@ export default function ClientCampaignsPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  // Activar o Pausar un Copy desde la Biblioteca (respetando el cupo del plan)
+  const handleToggleCopyStatus = async (copy: any) => {
+    try {
+      setError(null);
+      const newStatus = copy.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+      const res = await fetch("/api/campaigns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: copy.id, status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo cambiar el estado del copy");
+      }
+      await fetchInitialData();
+    } catch (err: any) {
+      setError(err.message || "Error al cambiar estado del copy");
+    }
+  };
+
+  // Eliminar un Copy permanentemente
+  const handleDeleteCopy = async (id: string, title: string) => {
+    if (!confirm(`¿Estás seguro de eliminar permanentemente el copy "${title}"?`)) return;
+    try {
+      setError(null);
+      const res = await fetch(`/api/campaigns?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al eliminar el copy");
+      await fetchInitialData();
+    } catch (err: any) {
+      setError(err.message || "Error al eliminar el copy");
+    }
+  };
 
   // Formato de texto
   const formatSelection = (prefix: string, suffix: string = prefix) => {
@@ -329,9 +368,21 @@ export default function ClientCampaignsPage() {
           </div>
         )}
 
-        {/* PESTAÑA 2: BIBLIOTECA DE COPYS GUARDADOS EN 3 COLUMNAS CON PAGINACIÓN */}
+        {/* PESTAÑA 2: BIBLIOTECA DE COPYS GUARDADOS EN 3 COLUMNAS CON COPY ENTERO SIN SCROLL */}
         {activeTab === "LIBRARY" && (
           <div className="space-y-6">
+            {/* Banner informativo de cupo de campañas activas */}
+            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+              isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
+            }`}>
+              <div>
+                <strong>Biblioteca Ilimitada de Copys:</strong> Puedes guardar todos los copys que desees aquí y elegir cuáles poner a rodar según el cupo de tu plan.
+              </div>
+              <span className="px-3 py-1 rounded-xl bg-[#229ED9]/15 text-[#229ED9] font-black whitespace-nowrap">
+                Activas ahora: {savedCampaigns.filter((c) => c.status === "ACTIVE").length} / {sessionUser?.subscription?.maxCampaigns || 2} permitidas
+              </span>
+            </div>
+
             {savedCampaigns.length === 0 ? (
               <div className={`p-12 rounded-3xl border text-center ${
                 isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
@@ -344,49 +395,110 @@ export default function ClientCampaignsPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
                   {savedCampaigns
                     .slice((libraryPage - 1) * copiesPerPage, libraryPage * copiesPerPage)
-                    .map((c) => (
-                      <div
-                        key={c.id}
-                        className={`p-5 rounded-3xl border shadow-md flex flex-col justify-between ${
-                          isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-black truncate">{c.name}</h3>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              c.status === "ACTIVE" ? "bg-emerald-500/20 text-emerald-400" : "bg-neutral-700 text-neutral-300"
+                    .map((c) => {
+                      const isActive = c.status === "ACTIVE";
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-5 rounded-3xl border shadow-lg flex flex-col justify-between transition-all ${
+                            isActive
+                              ? isDark
+                                ? "bg-[#1E2229] border-emerald-500/50 ring-1 ring-emerald-500/20"
+                                : "bg-white border-emerald-500/60"
+                              : isDark
+                              ? "bg-[#1E2229] border-[#2D3340]"
+                              : "bg-white border-neutral-300"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <h3 className="text-sm font-black truncate">{c.name}</h3>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap ${
+                                isActive
+                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                  : "bg-neutral-700/60 text-neutral-300"
+                              }`}>
+                                {isActive ? "Activo en Campañas" : "Guardado (En Pausa)"}
+                              </span>
+                            </div>
+
+                            {c.mediaUrl && (
+                              <div className="w-full h-36 rounded-2xl overflow-hidden mb-3 border border-[#2D3340]/50">
+                                <img src={c.mediaUrl} alt={c.name} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+
+                            {/* Vista completa del copy sin recorte ni scroll */}
+                            <div className={`p-3.5 rounded-2xl border text-xs font-sans whitespace-pre-wrap leading-relaxed break-words mb-3 ${
+                              isDark ? "bg-[#171A20] border-[#2D3340] text-neutral-200" : "bg-neutral-50 border-neutral-200 text-neutral-800"
                             }`}>
-                              {c.status}
-                            </span>
+                              {c.messageContent}
+                            </div>
+
+                            <div className="text-[11px] text-neutral-400 font-semibold flex items-center justify-between mb-4">
+                              <span>Grupos asignados: <strong>{Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 0}</strong></span>
+                              <span>Ciclo: <strong>Cada {c.intervalMinutes} min</strong></span>
+                            </div>
                           </div>
 
-                          {/* Vista previa con saltos de línea preservados */}
-                          <div className={`p-3 rounded-2xl border text-xs font-sans whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto mb-3 ${
-                            isDark ? "bg-[#171A20] border-[#2D3340] text-neutral-300" : "bg-neutral-50 border-neutral-200 text-neutral-700"
-                          }`}>
-                            {c.messageContent}
-                          </div>
+                          {/* Botones de Acción: Activar/Pausar, Editar y Eliminar */}
+                          <div className="space-y-2 pt-3 border-t border-[#2D3340]/50">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCopyStatus(c)}
+                              className={`w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                isActive
+                                  ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30"
+                                  : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20"
+                              }`}
+                            >
+                              {isActive ? (
+                                <>
+                                  <Pause className="w-3.5 h-3.5" />
+                                  <span>Pausar de Mis Campañas</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3.5 h-3.5" />
+                                  <span>Activar en Mis Campañas</span>
+                                </>
+                              )}
+                            </button>
 
-                          <div className="text-[11px] text-neutral-500 flex items-center justify-between">
-                            <span>Grupos: {Array.isArray(c.targetGroupIds) ? c.targetGroupIds.length : 0}</span>
-                            <span>Cada {c.intervalMinutes} min</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => loadExistingCopy(c)}
+                                className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  isDark
+                                    ? "bg-[#171A20] hover:bg-[#252A34] text-[#229ED9] border-[#2D3340]"
+                                    : "bg-neutral-50 hover:bg-neutral-100 text-[#229ED9] border-neutral-300"
+                                }`}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCopy(c.id, c.name)}
+                                className={`py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  isDark
+                                    ? "bg-[#171A20] hover:bg-red-500/15 text-red-400 border-[#2D3340] hover:border-red-500/30"
+                                    : "bg-neutral-50 hover:bg-red-50 text-red-600 border-neutral-300"
+                                }`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Eliminar</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => loadExistingCopy(c)}
-                          className="mt-4 w-full py-2 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Cargar en el Editor</span>
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                 </div>
 
                 {/* Controles de Paginación (12 items por página) */}
