@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
-  LayoutDashboard, Users, Send, BookOpen, 
-  Settings, LogOut, ShieldCheck, Radio
+  LayoutDashboard, Users, Send, CreditCard, 
+  BookOpen, LogOut, Radio
 } from "lucide-react";
 
 const navigation = [
   { name: "Resumen General", href: "/admin", icon: LayoutDashboard },
   { name: "Gestión de Clientes", href: "/admin/users", icon: Users },
-  { name: "Cuentas de Telegram", href: "/admin/telegram", icon: Send },
+  { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
+  { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
 ];
 
