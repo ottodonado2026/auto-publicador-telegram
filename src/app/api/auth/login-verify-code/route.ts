@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
 import { createTelegramClient, cleanPhoneNumber } from "@/lib/telegram";
+import { checkRateLimit, recordFailedAttempt, clearRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,19 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPhone = cleanPhoneNumber(phoneNumber);
+
+    // Protección Anti-Brute Force para intentos de código OTP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown-ip";
+    const rateKey = `otp:${ip}:${cleanPhone}`;
+    const limitCheck = checkRateLimit(rateKey);
+    if (limitCheck.isBlocked) {
+      return NextResponse.json(
+        {
+          error: `Demasiados intentos de código fallidos. Espera ${limitCheck.remainingMinutes} minutos e intenta de nuevo.`,
+        },
+        { status: 429 }
+      );
+    }
 
     // Recuperar sesión pendiente persistida en Neon
     const pending = await prisma.pendingAuthSession.findUnique({
@@ -40,37 +54,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Reconstruir cliente MTProto con la sesión persistida
-    const client = createTelegramClient(pending.sessionString);
-    await client.connect();
-
-    // Verificar el código recibido en Telegram MTProto
-    try {
-      await (client as any).invoke(
-        new (await import("telegram/tl")).Api.auth.SignIn({
-          phoneNumber: cleanPhone,
-          phoneCodeHash: pending.phoneCodeHash,
-          phoneCode: phoneCode.trim(),
-        })
-      );
-    } catch (err: any) {
-      if (err.message && err.message.includes("SESSION_PASSWORD_NEEDED")) {
-        if (password2fa) {
-          await (client as any).signInWithPassword({
-            password: password2fa,
-          });
-        } else {
-          return NextResponse.json({
-            require2fa: true,
-            message: "Tu cuenta de Telegram tiene contraseña de verificación en dos pasos (2FA). Ingrésala para continuar.",
-          });
-        }
-      } else {
-        console.error("Código de Telegram incorrecto en login:", err);
+    if (pending.phoneCodeHash === "SUPERADMIN_DIRECT_MSG") {
+      if (pending.sessionString.trim() !== String(phoneCode).trim()) {
+        const attempt = recordFailedAttempt(rateKey);
         return NextResponse.json(
-          { error: err.message || "Código incorrecto o expirado de Telegram." },
+          {
+            error: attempt.locked
+              ? "Demasiados intentos fallidos. Solicita un nuevo código en 15 minutos."
+              : `Código de seguridad 2FA incorrecto. Te quedan ${attempt.remainingAttempts} intento(s).`,
+          },
           { status: 400 }
         );
+      }
+      clearRateLimit(rateKey);
+    } else {
+      // Reconstruir cliente MTProto con la sesión persistida
+      const client = createTelegramClient(pending.sessionString);
+      await client.connect();
+
+      // Verificar el código recibido en Telegram MTProto
+      try {
+        await (client as any).invoke(
+          new (await import("telegram/tl")).Api.auth.SignIn({
+            phoneNumber: cleanPhone,
+            phoneCodeHash: pending.phoneCodeHash,
+            phoneCode: String(phoneCode).trim(),
+          })
+        );
+        clearRateLimit(rateKey);
+      } catch (err: any) {
+        if (err.message && err.message.includes("SESSION_PASSWORD_NEEDED")) {
+          if (password2fa) {
+            await (client as any).signInWithPassword({
+              password: password2fa,
+            });
+            clearRateLimit(rateKey);
+          } else {
+            return NextResponse.json({
+              require2fa: true,
+              message: "Tu cuenta de Telegram tiene contraseña de verificación en dos pasos (2FA). Ingrésala para continuar.",
+            });
+          }
+        } else {
+          recordFailedAttempt(rateKey);
+          console.error("Código de Telegram incorrecto en login:", err);
+          return NextResponse.json(
+            { error: err.message || "Código incorrecto o expirado de Telegram." },
+            { status: 400 }
+          );
+        }
       }
     }
 

@@ -130,7 +130,7 @@ export default function AdminCampaignsPage() {
   };
 
   return (
-    <div className="p-6 sm:p-8 w-full max-w-[1600px] mx-auto">
+    <div className="py-6 px-2 sm:px-4 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-7">
         <div>

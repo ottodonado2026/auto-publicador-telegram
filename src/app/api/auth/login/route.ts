@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
 import { checkRateLimit, recordFailedAttempt, clearRateLimit } from "@/lib/rateLimit";
+import { decrypt } from "@/lib/crypto";
 import { 
   TELEGRAM_API_ID, 
   TELEGRAM_API_HASH, 
@@ -90,37 +91,112 @@ export async function POST(req: NextRequest) {
     // Limpiar contador de intentos tras autenticación correcta
     clearRateLimit(rateLimitKey);
 
-    // El Administrador Principal puede acceder directamente sin riesgo de bloqueo por flood de Telegram
+    // Si el usuario es SUPERADMIN, requerimos 2FA enviando un código de 5 dígitos al Telegram de la granja
     if (user.role === "SUPERADMIN") {
-      const token = signToken({
-        userId: user.id,
-        email: user.email || user.phoneNumber || "",
-        role: user.role,
-      });
-
-      const response = NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          phoneNumber: user.phoneNumber,
-          storeName: user.storeName,
-          name: user.name,
-          role: user.role,
+      const farmAccount = await prisma.telegramAccount.findFirst({
+        where: {
+          status: "CONNECTED",
+          OR: [
+            { isSystemAccount: true },
+            { phoneNumber: { contains: "3002084859" } },
+            { userId: user.id },
+          ],
         },
+        orderBy: { createdAt: "asc" },
       });
 
-      response.cookies.set({
-        name: TOKEN_COOKIE_NAME,
-        value: token,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/",
-      });
+      const adminPhone = cleanPhoneNumber(farmAccount?.phoneNumber || user.phoneNumber || "+573002084859");
+      const securityCode = String(Math.floor(10000 + Math.random() * 90000));
 
-      return response;
+      let sentViaDirectMsg = false;
+
+      // Intentar enviar primero por mensaje directo a "me" (Mensajes Guardados) si la cuenta de la granja está conectada
+      if (farmAccount?.sessionString) {
+        try {
+          let sessionStr = "";
+          try {
+            sessionStr = farmAccount.sessionString.includes(":")
+              ? decrypt(farmAccount.sessionString)
+              : farmAccount.sessionString;
+          } catch {
+            sessionStr = farmAccount.sessionString;
+          }
+
+          if (sessionStr) {
+            const tgClient = createTelegramClient(sessionStr);
+            await tgClient.connect();
+            await tgClient.sendMessage("me", {
+              message: `🔐 [OttBot PRO - SuperAdmin 2FA]\n\nTu código de verificación de 5 dígitos para acceder al Panel Rey es:\n\n👉 **${securityCode}** 👈\n\nVálido por 10 minutos. No compartas este código con nadie.`,
+            });
+            sentViaDirectMsg = true;
+
+            await prisma.pendingAuthSession.upsert({
+              where: { phoneNumber: adminPhone },
+              create: {
+                phoneNumber: adminPhone,
+                phoneCodeHash: "SUPERADMIN_DIRECT_MSG",
+                sessionString: securityCode,
+                dataJson: JSON.stringify({ loginUserId: user.id, isSuperAdminDirect: true }),
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+              },
+              update: {
+                phoneCodeHash: "SUPERADMIN_DIRECT_MSG",
+                sessionString: securityCode,
+                dataJson: JSON.stringify({ loginUserId: user.id, isSuperAdminDirect: true }),
+                expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+              },
+            });
+          }
+        } catch (err) {
+          console.error("No se pudo enviar por mensaje directo a Telegram, usando sendCode oficial:", err);
+          sentViaDirectMsg = false;
+        }
+      }
+
+      // Si no tiene sesión activa conectada o falló el envío directo, enviar por código oficial MTProto
+      if (!sentViaDirectMsg) {
+        const client = createTelegramClient("");
+        await client.connect();
+
+        const { phoneCodeHash } = await client.sendCode(
+          {
+            apiId: TELEGRAM_API_ID,
+            apiHash: TELEGRAM_API_HASH,
+          },
+          adminPhone
+        );
+
+        const sessionString = (client.session as any).save();
+
+        await prisma.pendingAuthSession.upsert({
+          where: { phoneNumber: adminPhone },
+          create: {
+            phoneNumber: adminPhone,
+            phoneCodeHash,
+            sessionString,
+            dataJson: JSON.stringify({ loginUserId: user.id }),
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          },
+          update: {
+            phoneCodeHash,
+            sessionString,
+            dataJson: JSON.stringify({ loginUserId: user.id }),
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          },
+        });
+      }
+
+      const maskedPhone =
+        adminPhone.length > 6
+          ? `${adminPhone.slice(0, 4)} ••• ••• ${adminPhone.slice(-3)}`
+          : adminPhone;
+
+      return NextResponse.json({
+        requireOtp: true,
+        phoneNumber: adminPhone,
+        maskedPhone,
+        message: `Código de seguridad 2FA enviado al Telegram de tu granja (${maskedPhone}). Revisa tus Mensajes Guardados o notificaciones.`,
+      });
     }
 
     // Para los clientes, verificamos con código de 5 dígitos a Telegram si tienen teléfono

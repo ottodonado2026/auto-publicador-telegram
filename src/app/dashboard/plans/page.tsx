@@ -130,6 +130,7 @@ export default function ClientPlansPage() {
   const [purchasingAddon, setPurchasingAddon] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
   const [topupAmount, setTopupAmount] = useState<number>(7.00);
+  const [customAmountStr, setCustomAmountStr] = useState<string>("7.00");
 
   // Modal de Binance Pay en 2 pasos compactos sin scroll:
   // STEP_1_SEND -> STEP_2_VERIFY -> VERIFYING -> SUCCESS
@@ -183,10 +184,29 @@ export default function ClientPlansPage() {
     setTimeout(() => setCopiedField(null), 1800);
   };
 
-  // Abre el modal de Binance Pay conservando exactamente el monto que el cliente seleccionó en la tarjeta
+  const selectPresetAmount = (amt: number) => {
+    setTopupAmount(amt);
+    setCustomAmountStr(amt.toFixed(2));
+  };
+
+  const handleCustomAmountInput = (raw: string) => {
+    setCustomAmountStr(raw);
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed) && parsed > 0) {
+      setTopupAmount(parsed);
+    } else {
+      setTopupAmount(0);
+    }
+  };
+
+  const isAmountBelowMin = isNaN(topupAmount) || topupAmount < MIN_RECHARGE_USD;
+
+  // Abre el modal de Binance Pay conservando exactamente el monto que el cliente seleccionó o escribió
   const openBinanceModalForWallet = (customAmount?: number) => {
     if (customAmount !== undefined) {
-      setTopupAmount(customAmount);
+      const validAmt = customAmount >= MIN_RECHARGE_USD ? customAmount : MIN_RECHARGE_USD;
+      setTopupAmount(validAmt);
+      setCustomAmountStr(validAmt.toFixed(2));
     }
     setBinanceMode("WALLET");
     setBinanceStep("STEP_1_SEND");
@@ -211,7 +231,7 @@ export default function ClientPlansPage() {
   const exactUSDTAmount =
     binanceMode === "PLAN"
       ? Number(binancePlan?.priceUSD || 1.50).toFixed(2)
-      : Number(topupAmount || 1.50).toFixed(2);
+      : Number(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2);
 
   const handleVerifyBinancePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -443,18 +463,18 @@ export default function ClientPlansPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col items-start sm:items-end">
-                <span className={`text-xs font-medium mb-1.5 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                  Selecciona el monto a recargar:
+              <div className="flex flex-col items-start sm:items-end gap-1.5">
+                <span className={`text-xs font-medium ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Monto a recargar (Mínimo $1.50 USD):
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[1.50, 7.00, 13.50, 24.00].map((amt) => (
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setTopupAmount(amt)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
-                        topupAmount === amt
+                      onClick={() => selectPresetAmount(amt)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                        topupAmount === amt && !isAmountBelowMin
                           ? "bg-[#FCD535] text-[#1E2329] border-[#FCD535]"
                           : isDark
                           ? "bg-[#1C222E] text-slate-300 border-[#2D3648] hover:border-slate-500"
@@ -465,21 +485,48 @@ export default function ClientPlansPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Campo Libre en Dólares (USD / USDT) */}
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[11px] text-slate-400 font-medium">Otro valor:</span>
+                  <div className="relative">
+                    <span className="text-xs font-mono font-semibold text-[#FCD535] absolute left-2 top-1/2 -translate-y-1/2">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="1.50"
+                      placeholder="1.50"
+                      value={customAmountStr}
+                      onChange={(e) => handleCustomAmountInput(e.target.value)}
+                      className={`w-24 pl-5 pr-2 py-1 rounded-lg text-xs font-mono font-bold border focus:outline-none focus:border-[#FCD535] ${
+                        isAmountBelowMin
+                          ? "border-red-500 bg-red-500/10 text-red-400"
+                          : isDark
+                          ? "bg-[#10141B] border-[#2D3648] text-white"
+                          : "bg-slate-50 border-slate-300 text-slate-900"
+                      }`}
+                    />
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">USD</span>
+                </div>
               </div>
             </div>
 
-            <div className="pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className={`text-xs leading-relaxed max-w-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                Envía <strong className="font-mono text-[#FCD535]">${topupAmount.toFixed(2)} USDT</strong> a nuestro Binance UID <strong className="font-mono text-slate-200">{BINANCE_UID}</strong> (<strong className="text-emerald-400">{BINANCE_USERNAME}</strong>) y verifica tu Order ID al instante.
+                Envía <strong className="font-mono text-[#FCD535]">${(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2)} USDT</strong> a nuestro Binance UID <strong className="font-mono text-slate-200">{BINANCE_UID}</strong> (<strong className="text-emerald-400">{BINANCE_USERNAME}</strong>) y acredita tu saldo en segundos.
               </div>
 
               <button
                 type="button"
+                disabled={isAmountBelowMin}
                 onClick={() => openBinanceModalForWallet(topupAmount)}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-semibold rounded-xl transition-colors whitespace-nowrap cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-semibold rounded-xl transition-colors whitespace-nowrap cursor-pointer disabled:opacity-40"
               >
                 <BinanceIcon className="w-4 h-4 text-[#1E2329]" />
-                <span>Recargar ${topupAmount.toFixed(2)} con Binance Pay</span>
+                <span>Recargar ${(isAmountBelowMin ? MIN_RECHARGE_USD : topupAmount).toFixed(2)} con Binance Pay</span>
               </button>
             </div>
           </div>
@@ -796,20 +843,27 @@ export default function ClientPlansPage() {
                     </button>
                   </div>
 
-                  {/* Selector rápido de valores estipulados */}
+                  {/* Selector rápido de valores estipulados + Campo Libre en USD */}
                   {binanceMode === "WALLET" ? (
-                    <div>
-                      <span className="block text-[11px] font-semibold text-slate-400 mb-1.5">
-                        Monto estipulado a recargar (solo valores de planes):
-                      </span>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="block text-[11px] font-semibold text-slate-400">
+                          Monto a recargar en tu Wallet (mínimo $1.50 USD):
+                        </span>
+                        {isAmountBelowMin && (
+                          <span className="text-[10px] text-red-400 font-semibold">
+                            Mínimo $1.50 USD
+                          </span>
+                        )}
+                      </div>
                       <div className="grid grid-cols-5 gap-1.5">
                         {STIPULATED_AMOUNTS.map((item) => (
                           <button
                             key={item.value}
                             type="button"
-                            onClick={() => setTopupAmount(item.value)}
+                            onClick={() => selectPresetAmount(item.value)}
                             className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
-                              topupAmount === item.value
+                              topupAmount === item.value && !isAmountBelowMin
                                 ? "bg-[#FCD535]/15 border-[#FCD535] text-[#FCD535]"
                                 : isDark
                                 ? "bg-[#10141B] border-[#222A38] text-slate-300 hover:border-slate-600"
@@ -820,6 +874,36 @@ export default function ClientPlansPage() {
                             <div className="text-[10px] text-slate-400 truncate">{item.desc}</div>
                           </button>
                         ))}
+                      </div>
+
+                      {/* Campo libre para que el usuario ingrese el monto que desee (>= $1.50 USD) */}
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                          O escribe otro valor:
+                        </span>
+                        <div className="relative flex-1">
+                          <span className="text-xs font-mono font-semibold text-[#FCD535] absolute left-3 top-1/2 -translate-y-1/2">
+                            $
+                          </span>
+                          <input
+                            type="number"
+                            step="0.50"
+                            min="1.50"
+                            placeholder="Ej: 15.00"
+                            value={customAmountStr}
+                            onChange={(e) => handleCustomAmountInput(e.target.value)}
+                            className={`w-full pl-7 pr-12 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-none focus:border-[#FCD535] ${
+                              isAmountBelowMin
+                                ? "border-red-500 bg-red-500/10 text-red-400"
+                                : isDark
+                                ? "bg-[#10141B] border-[#2D3648] text-white"
+                                : "bg-slate-50 border-slate-300 text-slate-900"
+                            }`}
+                          />
+                          <span className="text-[10px] font-mono font-bold text-slate-400 absolute right-3 top-1/2 -translate-y-1/2">
+                            USD
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -931,11 +1015,13 @@ export default function ClientPlansPage() {
 
                   <button
                     type="button"
+                    disabled={binanceMode === "WALLET" && isAmountBelowMin}
                     onClick={() => {
+                      if (binanceMode === "WALLET" && isAmountBelowMin) return;
                       setBinanceError(null);
                       setBinanceStep("STEP_2_VERIFY");
                     }}
-                    className="w-full py-3 px-4 bg-[#FCD535] hover:bg-[#F0B90B] text-[#1E2329] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 px-4 bg-[#FCD535] hover:bg-[#F0B90B] disabled:opacity-40 text-[#1E2329] text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Ya envié los {exactUSDTAmount} USDT → Ingresar mi Order ID</span>
                     <ArrowRight className="w-4 h-4" />

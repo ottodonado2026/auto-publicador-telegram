@@ -49,7 +49,7 @@ export default function AdminPaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, totalUSD: 0 });
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 15;
 
   const fetchPayments = async () => {
     try {
@@ -110,10 +110,10 @@ export default function AdminPaymentsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const cardBg = isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300";
+  const cardBg = isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-[#F4F6F9] border-slate-300";
 
   return (
-    <div className="p-6 sm:p-8 w-full max-w-[1600px] mx-auto">
+    <div className="py-6 px-2 sm:px-4 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-7">
         <div>
@@ -330,7 +330,7 @@ export default function AdminPaymentsPage() {
           }`}
         >
           <span>
-            Página {currentPage} de {totalPages} ({filtered.length} registros — 10 por página)
+            Página {currentPage} de {totalPages} ({filtered.length} registros — 15 por página)
           </span>
           <div className="flex items-center gap-2">
             <button

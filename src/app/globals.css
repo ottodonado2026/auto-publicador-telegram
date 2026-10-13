@@ -10,15 +10,16 @@ html.sidebar-collapsed {
   --sidebar-width: 5rem;
 }
 
-/* Centrado simétrico automático del contenido principal respecto al espacio libre junto al Sidebar */
+/* Contenedor principal de ancho completo junto al Sidebar */
 @media (min-width: 1024px) {
   .ml-64 {
-    margin-left: auto !important;
-    margin-right: auto !important;
-    padding-left: calc(var(--sidebar-width) + 2.25rem) !important;
-    padding-right: 2.25rem !important;
-    max-width: calc(74rem + var(--sidebar-width)) !important;
-    transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: var(--sidebar-width) !important;
+    margin-right: 0 !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    width: calc(100% - var(--sidebar-width)) !important;
+    max-width: none !important;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

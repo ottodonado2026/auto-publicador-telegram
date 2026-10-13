@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "@/context/ThemeContext";
 import {
-  Users, RefreshCw, Search, CheckCircle2, Ban, Wallet,
+  RefreshCw, Search, CheckCircle2, Ban, Wallet,
   Copy, Check, ChevronLeft, ChevronRight, ArrowUpRight
 } from "lucide-react";
 
@@ -159,22 +159,22 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="p-6 sm:p-8 w-full max-w-[1600px] mx-auto">
+    <div className="py-6 px-2 sm:px-4 w-full">
       {/* Header Ancho Completo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className={`text-2xl sm:text-3xl font-black tracking-tight ${isDark ? "text-white" : "text-[#0F172A]"}`}>
+          <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isDark ? "text-white" : "text-[#0F172A]"}`}>
             Gestión de Clientes Registrados
           </h1>
-          <p className={`text-xs font-semibold mt-1 ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
-            Directorio completo sin scroll lateral y con paginación cada 10 usuarios. Para recargar por código BOT-I ve a la sección dedicada.
+          <p className={`text-xs font-medium mt-1 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+            Directorio completo a ancho total con paginación cada 10 usuarios y acciones rápidas visibles al 100%.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Link
             href="/admin/wallet"
-            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-all"
+            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
           >
             <Wallet className="w-3.5 h-3.5" />
             <span>Recargar por Código BOT-I</span>
@@ -183,10 +183,10 @@ export default function AdminUsersPage() {
 
           <button
             onClick={fetchUsers}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
               isDark
-                ? "bg-[#1E2229] border-[#2D3340] text-neutral-200 hover:text-white"
-                : "bg-[#F4F6F9] border-slate-300 text-slate-700 hover:bg-white shadow-xs"
+                ? "bg-[#151A23] border-[#262F3F] text-slate-200 hover:text-white"
+                : "bg-[#F4F6F9] border-slate-300 text-slate-700 hover:bg-white"
             }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -196,55 +196,55 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Buscador & Indicador de Paginación */}
-      <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative w-full max-w-md">
-          <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por código BOT-IXXXXXX, nombre, correo o teléfono..."
+            placeholder="Buscar por código BOT-IXXXXXX, negocio, correo o teléfono..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] ${
+            className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-xs font-medium focus:outline-none focus:border-[#0284C7] ${
               isDark
-                ? "bg-[#1B1F27] border-[#2D3340] text-white placeholder:text-neutral-500"
+                ? "bg-[#151A23] border-[#262F3F] text-white placeholder:text-slate-500"
                 : "bg-[#F4F6F9] border-slate-300 text-slate-900 placeholder:text-slate-400"
             }`}
           />
         </div>
 
-        <div className={`text-xs font-bold ${isDark ? "text-neutral-400" : "text-slate-600"}`}>
+        <div className={`text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-600"}`}>
           Mostrando {paginatedUsers.length} de {filteredUsers.length} usuario(s) • Página {currentPage} de {totalPages}
         </div>
       </div>
 
-      {/* Tabla de Ancho Completo SIN Scroll Horizontal */}
+      {/* Tabla de Ancho Completo Real (Todas las columnas y botones visibles sin cortarse) */}
       <div
-        className={`rounded-3xl border shadow-xl overflow-hidden ${
-          isDark ? "bg-[#1B1F27] border-[#2B313F]" : "bg-[#F4F6F9] border-slate-300"
+        className={`w-full rounded-2xl border shadow-xl overflow-hidden ${
+          isDark ? "bg-[#151A23] border-[#262F3F]" : "bg-[#F4F6F9] border-slate-300"
         }`}
       >
         <table className="w-full text-left text-xs table-auto">
           <thead
-            className={`font-extrabold uppercase tracking-wider text-[10px] border-b ${
+            className={`font-semibold uppercase tracking-wider text-[10px] border-b ${
               isDark
-                ? "bg-[#14171E] text-neutral-400 border-[#2B313F]"
+                ? "bg-[#10141B] text-slate-400 border-[#262F3F]"
                 : "bg-[#E8ECF2] text-slate-600 border-slate-300"
             }`}
           >
             <tr>
-              <th className="px-4 py-3.5">Código BOT-I</th>
-              <th className="px-4 py-3.5">Cliente / Contacto</th>
-              <th className="px-4 py-3.5">Plan / Generado</th>
-              <th className="px-4 py-3.5">Wallet</th>
-              <th className="px-4 py-3.5">Vigencia</th>
-              <th className="px-4 py-3.5">Uso</th>
-              <th className="px-4 py-3.5 text-right">Acciones Rápidas (Wallet & Días)</th>
+              <th className="px-3 py-3.5">Código BOT-I</th>
+              <th className="px-3 py-3.5">Negocio / Contacto</th>
+              <th className="px-3 py-3.5">Plan / Generado</th>
+              <th className="px-3 py-3.5">Wallet</th>
+              <th className="px-3 py-3.5">Vigencia</th>
+              <th className="px-3 py-3.5">Uso</th>
+              <th className="px-3 py-3.5 text-right">Acciones Rápidas (Wallet & Días)</th>
             </tr>
           </thead>
-          <tbody className={`divide-y ${isDark ? "divide-[#282E3B]" : "divide-slate-200"}`}>
+          <tbody className={`divide-y ${isDark ? "divide-[#222A38]" : "divide-slate-200"}`}>
             {paginatedUsers.map((u) => {
               const expiresAt = u.subscription?.expiresAt ? new Date(u.subscription.expiresAt) : null;
               const isExpired = expiresAt ? new Date() > expiresAt : true;
@@ -258,16 +258,16 @@ export default function AdminUsersPage() {
                 <tr
                   key={u.id}
                   className={`transition-colors ${
-                    isDark ? "hover:bg-[#232834]/60" : "hover:bg-white/70"
+                    isDark ? "hover:bg-[#1C222E]/70" : "hover:bg-white/70"
                   }`}
                 >
-                  {/* Código BOT-I en una sola línea sin partirse */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  {/* Código BOT-I */}
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => handleCopyCode(code, u.id)}
                       title="Clic para copiar código BOT-I"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#229ED9]/15 border border-[#229ED9]/35 text-[#229ED9] font-mono font-black text-xs hover:bg-[#229ED9]/25 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0284C7]/15 border border-[#0284C7]/35 text-[#38BDF8] font-mono font-semibold text-xs hover:bg-[#0284C7]/25 transition-all cursor-pointer"
                     >
                       <span>{code}</span>
                       {copiedId === u.id ? (
@@ -279,69 +279,69 @@ export default function AdminUsersPage() {
                   </td>
 
                   {/* Cliente & Contacto */}
-                  <td className="px-4 py-3.5 max-w-[230px]">
+                  <td className="px-3 py-3 max-w-[220px]">
                     <div className="flex items-center gap-1.5">
-                      <span className={`font-black text-xs sm:text-sm truncate ${isDark ? "text-white" : "text-slate-900"}`}>
+                      <span className={`font-semibold text-xs truncate ${isDark ? "text-white" : "text-slate-900"}`}>
                         {u.storeName || u.name || "Sin nombre"}
                       </span>
                       {u.role === "SUPERADMIN" && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
                           ADMIN
                         </span>
                       )}
                     </div>
-                    <div className="text-neutral-400 text-[11px] font-mono truncate mt-0.5">
+                    <div className="text-slate-400 text-[11px] font-mono truncate mt-0.5">
                       {u.phoneNumber ? `${u.phoneNumber} • ` : ""}
                       {u.email}
                     </div>
                   </td>
 
                   {/* Plan & Total Generado */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    <div className={`text-xs font-extrabold ${isDark ? "text-neutral-200" : "text-slate-800"}`}>
-                      {u.planName || "Pase Express (1d)"}
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <div className={`text-xs font-semibold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
+                      {daysLeft > 365 ? "Plan Promotor Ilimitado" : u.planName || "Pase Express (1d)"}
                     </div>
-                    <div className="text-[11px] font-mono font-bold text-emerald-500 mt-0.5">
+                    <div className="text-[11px] font-mono font-medium text-emerald-400 mt-0.5">
                       Generado: ${Number(u.totalGeneratedUSD || 0).toFixed(2)} USD
                     </div>
                   </td>
 
                   {/* Saldo Wallet */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono font-black text-xs">
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono font-semibold text-xs">
                       <Wallet className="w-3.5 h-3.5" />
                       <span>${walletNum.toFixed(2)}</span>
                     </span>
                   </td>
 
                   {/* Vigencia */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                         !isExpired
                           ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
                           : "bg-red-500/15 text-red-400 border border-red-500/30"
                       }`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${!isExpired ? "bg-emerald-400" : "bg-red-400"}`} />
-                      {!isExpired ? `${daysLeft}d activo` : "Expirado"}
+                      {!isExpired ? (daysLeft > 365 ? "Ilimitado" : `${daysLeft}d activo`) : "Expirado"}
                     </span>
                   </td>
 
                   {/* Uso TG / Campañas */}
-                  <td className="px-4 py-3.5 whitespace-nowrap font-bold text-[11px]">
-                    <span className="text-[#229ED9]">{u._count.telegramAccounts} TG</span>
-                    <span className="mx-1 text-neutral-500">/</span>
+                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-[11px]">
+                    <span className="text-[#38BDF8]">{u._count.telegramAccounts} TG</span>
+                    <span className="mx-1 text-slate-500">/</span>
                     <span>{u._count.campaigns} Camp.</span>
                   </td>
 
-                  {/* Acciones Compactas Alineadas */}
-                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                  {/* Acciones Compactas Alineadas y 100% Visibles */}
+                  <td className="px-3 py-3 text-right whitespace-nowrap">
                     <div className="inline-flex items-center justify-end gap-1">
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleCreditWallet(u.id, 1.50)}
-                        className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-black rounded-lg transition-colors cursor-pointer"
+                        className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer"
                         title="Acreditar $1.50 USD"
                       >
                         +$1.50
@@ -349,7 +349,7 @@ export default function AdminUsersPage() {
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleCreditWallet(u.id, 7)}
-                        className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-black rounded-lg transition-colors cursor-pointer"
+                        className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer"
                         title="Acreditar $7.00 USD"
                       >
                         +$7
@@ -357,20 +357,20 @@ export default function AdminUsersPage() {
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleCustomWalletPrompt(u)}
-                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg transition-colors shadow-xs cursor-pointer"
+                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold rounded-lg transition-colors cursor-pointer"
                         title="Acreditar otro monto en USD"
                       >
                         +$ Otro
                       </button>
 
-                      <span className="mx-0.5 text-neutral-600">|</span>
+                      <span className="mx-0.5 text-slate-600">|</span>
 
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleRechargeDays(u.id, 1)}
-                        className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors border cursor-pointer ${
+                        className={`px-2 py-1 text-[11px] font-semibold rounded-lg transition-colors border cursor-pointer ${
                           isDark
-                            ? "bg-[#13161C] hover:bg-[#252A34] text-neutral-200 border-[#2D3340]"
+                            ? "bg-[#10141B] hover:bg-[#1C222E] text-slate-200 border-[#262F3F]"
                             : "bg-white hover:bg-slate-100 text-slate-800 border-slate-300"
                         }`}
                       >
@@ -379,9 +379,9 @@ export default function AdminUsersPage() {
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleRechargeDays(u.id, 7)}
-                        className={`px-2 py-1 text-[11px] font-bold rounded-lg transition-colors border cursor-pointer ${
+                        className={`px-2 py-1 text-[11px] font-semibold rounded-lg transition-colors border cursor-pointer ${
                           isDark
-                            ? "bg-[#13161C] hover:bg-[#252A34] text-neutral-200 border-[#2D3340]"
+                            ? "bg-[#10141B] hover:bg-[#1C222E] text-slate-200 border-[#262F3F]"
                             : "bg-white hover:bg-slate-100 text-slate-800 border-slate-300"
                         }`}
                       >
@@ -390,16 +390,16 @@ export default function AdminUsersPage() {
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleRechargeDays(u.id, 30)}
-                        className="px-2 py-1 bg-[#229ED9] hover:bg-blue-500 text-white text-[11px] font-black rounded-lg transition-colors shadow-xs cursor-pointer"
+                        className="px-2 py-1 bg-[#0284C7] hover:bg-[#0369A1] text-white text-[11px] font-semibold rounded-lg transition-colors cursor-pointer"
                       >
                         +30d
                       </button>
                       <button
                         disabled={actionLoading === u.id}
                         onClick={() => handleToggleStatus(u.id, u.isActive)}
-                        className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                        className={`p-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                           u.isActive
-                            ? "text-neutral-400 hover:text-red-500 hover:bg-red-500/10"
+                            ? "text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                             : "text-emerald-400 bg-emerald-500/20"
                         }`}
                         title={u.isActive ? "Suspender cliente" : "Activar cliente"}
@@ -416,8 +416,8 @@ export default function AdminUsersPage() {
 
         {/* Controles de Paginación cada 10 usuarios */}
         <div
-          className={`px-5 py-4 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold ${
-            isDark ? "bg-[#14171E] border-[#2B313F] text-neutral-400" : "bg-[#E8ECF2] border-slate-300 text-slate-600"
+          className={`px-5 py-3.5 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-semibold ${
+            isDark ? "bg-[#10141B] border-[#262F3F] text-slate-400" : "bg-[#E8ECF2] border-slate-300 text-slate-600"
           }`}
         >
           <span>
@@ -430,7 +430,7 @@ export default function AdminUsersPage() {
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               className={`px-3.5 py-1.5 rounded-xl border flex items-center gap-1 cursor-pointer disabled:opacity-40 ${
-                isDark ? "bg-[#1B1F27] border-[#2D3340] text-white" : "bg-white border-slate-300 text-slate-800"
+                isDark ? "bg-[#151A23] border-[#262F3F] text-white" : "bg-white border-slate-300 text-slate-800"
               }`}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -442,7 +442,7 @@ export default function AdminUsersPage() {
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               className={`px-3.5 py-1.5 rounded-xl border flex items-center gap-1 cursor-pointer disabled:opacity-40 ${
-                isDark ? "bg-[#1B1F27] border-[#2D3340] text-white" : "bg-white border-slate-300 text-slate-800"
+                isDark ? "bg-[#151A23] border-[#262F3F] text-white" : "bg-white border-slate-300 text-slate-800"
               }`}
             >
               <span>Siguiente</span>

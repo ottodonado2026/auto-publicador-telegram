@@ -16,11 +16,11 @@ const navigation = [
   { name: "Recargar Wallet (BOT-I)", href: "/admin/wallet", icon: Wallet },
   { name: "Gestión de Clientes", href: "/admin/users", icon: Users },
   { name: "Campañas en Vivo", href: "/admin/campaigns", icon: Activity },
-  { name: "Pagos / Binance Pay", href: "/admin/payments", icon: PayIcon },
-  { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
   { name: "Flota / Granja Telegram", href: "/admin/telegram", icon: Send },
   { name: "Base de Datos de Grupos", href: "/admin/groups", icon: Database },
+  { name: "Pagos / Binance Pay", href: "/admin/payments", icon: PayIcon },
   { name: "Guía de Operación", href: "/admin/guide", icon: BookOpen },
+  { name: "Planes de Membresía", href: "/admin/plans", icon: CreditCard },
 ];
 
 interface AdminNotification {
