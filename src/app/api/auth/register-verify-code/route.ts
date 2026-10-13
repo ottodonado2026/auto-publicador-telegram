@@ -103,7 +103,9 @@ export async function POST(req: NextRequest) {
         subscription: {
           create: {
             status: "TRIAL",
-            dailyRate: 1.0,
+            dailyRate: 1.25,
+            maxCampaigns: 2,
+            maxAccounts: 1,
             expiresAt: trialExpiry,
           },
         },

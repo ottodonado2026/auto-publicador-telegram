@@ -12,7 +12,7 @@ export async function GET() {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const [campaigns, telegramAccount, membership, user, todaySentCount] = await Promise.all([
+    const [campaigns, telegramAccount, membership, user, todayLogs] = await Promise.all([
       prisma.campaign.findMany({
         where: { userId: session.userId },
         include: {
@@ -43,12 +43,20 @@ export async function GET() {
           subscription: true,
         },
       }),
-      prisma.messageLog.count({
+      prisma.messageLog.findMany({
         where: {
           campaign: { userId: session.userId },
           status: "SENT",
           createdAt: { gte: startOfDay },
         },
+        select: {
+          id: true,
+          campaignId: true,
+          targetGroupId: true,
+          targetGroupName: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
@@ -56,13 +64,42 @@ export async function GET() {
     const maxDailyPosts =
       maxCampQuota >= 8 ? 500 : maxCampQuota >= 5 ? 300 : maxCampQuota >= 3 ? 200 : 100;
 
+    // Agrupar publicaciones de hoy por grupo para el panel de métricas del usuario
+    const groupMap = new Map<
+      string,
+      { groupName: string; groupId: string; sentToday: number; lastSentAt: Date }
+    >();
+
+    for (const log of todayLogs) {
+      const key = log.targetGroupName || log.targetGroupId;
+      const existing = groupMap.get(key);
+      if (existing) {
+        existing.sentToday += 1;
+      } else {
+        groupMap.set(key, {
+          groupName: log.targetGroupName || log.targetGroupId,
+          groupId: log.targetGroupId,
+          sentToday: 1,
+          lastSentAt: log.createdAt,
+        });
+      }
+    }
+
+    const groupBreakdown = Array.from(groupMap.values()).sort(
+      (a, b) => b.sentToday - a.sentToday
+    );
+
+    const todaySentCount = Math.min(todayLogs.length, maxDailyPosts);
+
     return NextResponse.json({
       campaigns,
       telegramAccount,
       membership,
       user,
       todaySentCount,
+      rawTodaySentCount: todayLogs.length,
       maxDailyPosts,
+      groupBreakdown,
     });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {

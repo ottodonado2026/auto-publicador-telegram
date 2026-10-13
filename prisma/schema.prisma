@@ -84,11 +84,11 @@ model Subscription {
   userId        String             @unique
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   status        SubscriptionStatus @default(TRIAL)
-  dailyRate     Decimal            @default(1.00) @db.Decimal(10, 2)
+  dailyRate     Decimal            @default(1.25) @db.Decimal(10, 2)
   startsAt      DateTime           @default(now())
   expiresAt     DateTime           // Fecha exacta y estricta de corte
   maxAccounts   Int                @default(1)
-  maxCampaigns  Int                @default(3)
+  maxCampaigns  Int                @default(2)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 

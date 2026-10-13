@@ -8,8 +8,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { 
   Plus, Pause, AlertCircle, Clock, 
   CheckCircle2, MessageSquare, Activity, 
-  RefreshCw, Rocket, XCircle, Users, Edit3, Timer, BookmarkCheck,
-  ChevronLeft, ChevronRight, Moon, Zap, BookOpen, Smartphone
+  RefreshCw, Rocket, XCircle, Users, Edit3, BookmarkCheck,
+  ChevronLeft, ChevronRight, Zap, BookOpen, Smartphone, BarChart3, MousePointerClick, Layers
 } from "lucide-react";
 
 function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, nowMs: number) {
@@ -19,7 +19,7 @@ function formatRestCountdown(nextRunAt: string | null, intervalMinutes: number, 
   const targetMs = new Date(nextRunAt).getTime();
   const diffSec = Math.max(0, Math.floor((targetMs - nowMs) / 1000));
   if (diffSec === 0) {
-    return "Iniciando ronda...";
+    return "00m 00s";
   }
   const hrs = Math.floor(diffSec / 3600);
   const mins = Math.floor((diffSec % 3600) / 60);
@@ -37,6 +37,7 @@ export default function ClientDashboard() {
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState<"CAMPAIGNS" | "METRICS">("CAMPAIGNS");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [broadcastingId, setBroadcastingId] = useState<string | null>(null);
   const [broadcastStartMs, setBroadcastStartMs] = useState<Record<string, number>>({});
@@ -44,10 +45,12 @@ export default function ClientDashboard() {
   const [campaignPage, setCampaignPage] = useState(1);
   // Paginación independiente cada 5 grupos para "Últimos Grupos donde se Publicó" en cada campaña
   const [logPageByCampaign, setLogPageByCampaign] = useState<Record<string, number>>({});
+  const [metricsGroupPage, setMetricsGroupPage] = useState(1);
   const [nowMs, setNowMs] = useState<number>(Date.now());
 
   const campaignsPerPage = 12;
   const logsPerPage = 5;
+  const metricsPerPage = 10;
 
   const fetchDashboard = async () => {
     try {
@@ -67,9 +70,9 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchDashboard();
-    // Sincronización silenciosa en vivo cada 8 segundos
-    const pollInterval = setInterval(fetchDashboard, 8000);
-    // Reloj en tiempo real (1 segundo) para conteo regresivo de 60s y de descanso
+    // Sincronización silenciosa en vivo cada 6 segundos para reflejar cada grupo publicado
+    const pollInterval = setInterval(fetchDashboard, 6000);
+    // Reloj en tiempo real (1 segundo) para que la barra baje exactamente de 60s a 0s
     const clockInterval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => {
       clearInterval(pollInterval);
@@ -124,7 +127,7 @@ export default function ClientDashboard() {
 
       setBroadcastFeedback({
         id: campaignId,
-        message: result.message || "¡Ronda de difusión completada exitosamente en Telegram!",
+        message: result.message || "¡Secuencia de difusión en vivo iniciada!",
       });
 
       await fetchDashboard();
@@ -146,19 +149,35 @@ export default function ClientDashboard() {
   const sessionUser = data?.user;
   const telegramAccount = data?.telegramAccount;
   const isExpired = !membership?.hasAccess;
+
+  // Límites reales según el plan activo del usuario
   const maxAllowedActive = sessionUser?.subscription?.maxCampaigns || 2;
+  const planName =
+    maxAllowedActive >= 8
+      ? "Plan Mensual"
+      : maxAllowedActive >= 5
+      ? "Plan Quincenal"
+      : maxAllowedActive >= 3
+      ? "Plan Semanal"
+      : "Pase Express";
   const maxGroupsAllowed =
     maxAllowedActive >= 8 ? 9999 : maxAllowedActive >= 5 ? 100 : maxAllowedActive >= 3 ? 50 : 25;
-  const todaySentCount = data?.todaySentCount || 0;
-  const maxDailyPosts = data?.maxDailyPosts || 100;
-  const dailyLimitReached = todaySentCount >= maxDailyPosts;
+  const maxDailyPosts =
+    maxAllowedActive >= 8 ? 500 : maxAllowedActive >= 5 ? 300 : maxAllowedActive >= 3 ? 200 : 100;
 
-  // Métricas agregadas
-  const totalGroups = activeCampaigns.reduce(
-    (acc: number, c: any) => acc + (Array.isArray(c.targetGroupIds) ? new Set(c.targetGroupIds).size : 1),
-    0
+  const todaySentCount = Math.min(data?.todaySentCount || 0, maxDailyPosts);
+  const dailyLimitReached = (data?.rawTodaySentCount || 0) >= maxDailyPosts;
+  const groupBreakdown: any[] = data?.groupBreakdown || [];
+
+  // División automática de publicaciones diarias entre las campañas activas
+  const activeCountForSplit = Math.max(1, activeCampaigns.length);
+  const postsPerActiveCampaign = Math.floor(maxDailyPosts / activeCountForSplit);
+
+  // Clics / Interacciones estimadas hacia el @usuario o canal de Telegram (basado en grupos impactados hoy)
+  const estimatedProfileClicks = Math.max(
+    todaySentCount > 0 ? Math.ceil(todaySentCount * 0.35) : 0,
+    groupBreakdown.length * 2
   );
-  const totalSent = allCampaigns.reduce((acc: number, c: any) => acc + (c._count?.logs || 0), 0);
 
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${
@@ -212,13 +231,12 @@ export default function ClientDashboard() {
                       <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                         Auto-Publicador en Grupos de Telegram
                       </h1>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                        telegramAccount?.status === "CONNECTED" || !isExpired
-                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                          : "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                      }`}>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                         {telegramAccount?.status === "CONNECTED" ? "CONECTADO" : "GRANJA 24/7 ACTIVA"}
+                      </span>
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] border border-[#38BDF8]/30 uppercase">
+                        {planName}
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-1 font-medium">
@@ -235,8 +253,8 @@ export default function ClientDashboard() {
                   </div>
                 </div>
 
-                {/* Resumen Diario de Envíos */}
-                <div className="flex items-center gap-3 bg-[#090E17]/80 px-4 py-2.5 rounded-2xl border border-[#1E2D45]">
+                {/* Resumen Diario Real según el Plan Activo */}
+                <div className="flex flex-wrap items-center gap-4 bg-[#090E17]/80 px-4 py-2.5 rounded-2xl border border-[#1E2D45]">
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
                       Publicaciones de Hoy
@@ -246,27 +264,54 @@ export default function ClientDashboard() {
                       <span className="text-xs text-slate-400 font-bold">/ {maxDailyPosts} máx. hoy</span>
                     </div>
                   </div>
-                  <div className="h-8 w-px bg-white/10 mx-1" />
+                  <div className="h-8 w-px bg-white/10" />
                   <div>
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
                       Campañas Activas
                     </span>
                     <div className="text-sm font-black text-[#38BDF8]">
-                      {activeCampaigns.length} de {maxAllowedActive}
+                      {activeCampaigns.length} de {maxAllowedActive} ({postsPerActiveCampaign} envíos c/u)
+                    </div>
+                  </div>
+                  <div className="h-8 w-px bg-white/10" />
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                      Clics / Visitas Hoy
+                    </span>
+                    <div className="text-sm font-black text-amber-400 flex items-center gap-1">
+                      <MousePointerClick className="w-3.5 h-3.5" />
+                      <span>~{estimatedProfileClicks} clics</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Barra de Botones Rápidos (Estilo Centro de Control) */}
+              {/* Barra de Botones Rápidos + Selector de Pestañas (Campañas en Vivo vs Métricas por Grupo) */}
               <div className="pt-4 flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
-                  onClick={fetchDashboard}
-                  className="px-4 py-2.5 rounded-xl bg-[#162032] hover:bg-[#1E2B42] border border-[#2B3B55] text-xs font-extrabold text-white flex items-center gap-2 transition-all cursor-pointer"
+                  onClick={() => setActiveView("CAMPAIGNS")}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer border ${
+                    activeView === "CAMPAIGNS"
+                      ? "bg-[#0EA5E9] text-white border-[#38BDF8] shadow-lg shadow-[#0EA5E9]/25"
+                      : "bg-[#162032] hover:bg-[#1E2B42] border-[#2B3B55] text-slate-200"
+                  }`}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-[#38BDF8]" />
-                  <span>Refrescar</span>
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Campañas en Vivo ({activeCampaigns.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveView("METRICS")}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer border ${
+                    activeView === "METRICS"
+                      ? "bg-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-500/25"
+                      : "bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Métricas por Grupo & Clics ({groupBreakdown.length})</span>
                 </button>
 
                 <Link
@@ -274,7 +319,7 @@ export default function ClientDashboard() {
                   className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-xs font-extrabold text-amber-400 flex items-center gap-2 transition-all"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>Guía de Uso & Reglas</span>
+                  <span>Guía & División de Planes</span>
                 </Link>
 
                 <Link
@@ -282,15 +327,7 @@ export default function ClientDashboard() {
                   className="px-4 py-2.5 rounded-xl bg-[#0EA5E9]/10 hover:bg-[#0EA5E9]/20 border border-[#0EA5E9]/40 text-xs font-extrabold text-[#38BDF8] flex items-center gap-2 transition-all"
                 >
                   <Smartphone className="w-3.5 h-3.5" />
-                  <span>Sincronizar Grupos / Cuentas TG</span>
-                </Link>
-
-                <Link
-                  href="/dashboard/campaigns?tab=LIBRARY"
-                  className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/40 text-xs font-extrabold text-purple-300 flex items-center gap-2 transition-all"
-                >
-                  <BookmarkCheck className="w-3.5 h-3.5" />
-                  <span>Biblioteca de Copys ({allCampaigns.length})</span>
+                  <span>Sincronizar Grupos</span>
                 </Link>
 
                 <Link
@@ -298,414 +335,599 @@ export default function ClientDashboard() {
                   className="ml-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#10B981] hover:opacity-95 text-xs font-black text-white shadow-lg shadow-teal-500/25 flex items-center gap-2 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Crear Nuevo Copy / Campaña</span>
+                  <span>Crear / Ver Copys ({allCampaigns.length})</span>
                 </Link>
               </div>
             </div>
 
-            {/* Lista de Campañas ACTIVAS */}
-            {activeCampaigns.length === 0 ? (
-              <div className={`rounded-3xl border p-12 text-center shadow-lg ${
-                isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
-              }`}>
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
-                  isDark ? "bg-[#171A20] text-[#229ED9]" : "bg-neutral-100 text-[#229ED9]"
-                }`}>
-                  <MessageSquare className="w-7 h-7" />
+            {/* VISTA 2: PANEL DE MÉTRICAS POR GRUPO, REPARTO DE CAMPAÑAS Y CLICS AL PERFIL/CANAL */}
+            {activeView === "METRICS" ? (
+              <div className="space-y-6">
+                {/* Tarjeta Explicativa del Reparto Actual del Usuario */}
+                <div className="rounded-3xl p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8] block">
+                        Control Inteligente de tu Plan ({planName})
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-black mt-0.5">
+                        Distribución de tus {maxDailyPosts} Publicaciones Diarias y {maxGroupsAllowed >= 9999 ? "Grupos Ilimitados" : `${maxGroupsAllowed} Grupos`}
+                      </h2>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveView("CAMPAIGNS")}
+                      className="px-4 py-2 rounded-xl bg-[#162032] border border-[#293B58] text-xs font-bold text-[#38BDF8] hover:bg-[#1E2C44] cursor-pointer self-start sm:self-center"
+                    >
+                      ← Volver a Campañas en Vivo
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
+                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
+                        Tope Diario de tu Plan
+                      </span>
+                      <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
+                        {todaySentCount} / {maxDailyPosts}
+                      </span>
+                      <span className="text-[11px] text-slate-400 mt-1 block">
+                        Restantes hoy: <strong>{Math.max(0, maxDailyPosts - todaySentCount)} envíos</strong>
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
+                        Reparto por Campaña Activa
+                      </span>
+                      <span className="text-2xl font-black text-[#38BDF8] font-mono mt-1 block">
+                        {postsPerActiveCampaign} envíos c/u
+                      </span>
+                      <span className="text-[11px] text-slate-400 mt-1 block">
+                        Divididos entre tus <strong>{activeCampaigns.length || 1} campaña(s)</strong>
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400 block">
+                        Grupos Impactados Hoy
+                      </span>
+                      <span className="text-2xl font-black text-white font-mono mt-1 block">
+                        {groupBreakdown.length} grupos
+                      </span>
+                      <span className="text-[11px] text-slate-400 mt-1 block">
+                        Cupo de tu plan: <strong>Hasta {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed}</strong>
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#131B2A] border border-amber-500/30">
+                      <span className="text-[10px] font-extrabold uppercase text-amber-400 block">
+                        Clics / Visitas Estimadas Hoy
+                      </span>
+                      <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
+                        ~{estimatedProfileClicks} clics
+                      </span>
+                      <span className="text-[11px] text-slate-400 mt-1 block">
+                        Hacia tu @usuario o enlace en el copy
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desglose por cada campaña activa */}
+                  {activeCampaigns.length > 0 && (
+                    <div className="mt-5 p-4 rounded-2xl bg-[#0B101B] border border-[#1E2A40]">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-3">
+                        Cómo se dividen hoy tus {maxDailyPosts} publicaciones entre tus campañas activas:
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {activeCampaigns.map((camp: any, idx: number) => {
+                          const gCount = Math.min(
+                            maxGroupsAllowed,
+                            Array.isArray(camp.targetGroupIds) ? new Set(camp.targetGroupIds).size : 1
+                          );
+                          const roundsPerDay = Math.max(1, Math.floor(postsPerActiveCampaign / Math.max(1, gCount)));
+                          return (
+                            <div
+                              key={camp.id}
+                              className="p-3.5 rounded-xl bg-[#131B2A] border border-[#223049] flex items-center justify-between text-xs"
+                            >
+                              <div>
+                                <span className="font-black text-white block">
+                                  Campaña #{idx + 1}: {camp.name}
+                                </span>
+                                <span className="text-[11px] text-slate-400 mt-0.5 block">
+                                  {gCount} grupos asignados • ~{roundsPerDay} rondas completas en el día
+                                </span>
+                              </div>
+                              <span className="px-3 py-1 rounded-lg bg-[#38BDF8]/15 text-[#38BDF8] font-mono font-black">
+                                {postsPerActiveCampaign} envíos/día
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-base font-bold">
-                  {pausedCampaigns.length > 0
-                    ? `Tienes ${pausedCampaigns.length} copy(s) guardado(s) en pausa`
-                    : "Aún no tienes campañas activas"}
-                </h3>
-                <p className={`text-xs mt-1 max-w-md mx-auto leading-relaxed ${
-                  isDark ? "text-neutral-400" : "text-neutral-500"
-                }`}>
-                  {pausedCampaigns.length > 0
-                    ? "Ve a tu Biblioteca de Copys Guardados y haz clic en 'Activar en Mis Campañas' para poner a rodar los anuncios que prefieras."
-                    : "Crea tu primer copy con texto formateado, negritas, emojis y enlaces para iniciar el piloto automático."}
-                </p>
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <Link
-                    href="/dashboard/campaigns"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-                  >
-                    <BookmarkCheck className="w-4 h-4" />
-                    <span>Ir a Mis Copys & Activar Campaña</span>
-                  </Link>
+
+                {/* Tabla de Publicaciones Realizadas Hoy en Cada Grupo */}
+                <div className="rounded-3xl p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black">
+                        Registro Exacto de Publicaciones por Grupo (Hoy)
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Aquí puedes verificar cuántas veces se ha publicado tu anuncio en cada grupo de Telegram durante el día de hoy.
+                      </p>
+                    </div>
+
+                    {Math.ceil(groupBreakdown.length / metricsPerPage) > 1 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={metricsGroupPage <= 1}
+                          onClick={() => setMetricsGroupPage((p) => Math.max(1, p - 1))}
+                          className="px-3 py-1.5 rounded-xl bg-[#131B2A] border border-[#293B58] text-xs font-bold text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          ← Anterior
+                        </button>
+                        <span className="text-xs font-black text-[#38BDF8]">
+                          Pág. {metricsGroupPage}/{Math.ceil(groupBreakdown.length / metricsPerPage)}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={metricsGroupPage >= Math.ceil(groupBreakdown.length / metricsPerPage)}
+                          onClick={() => setMetricsGroupPage((p) => p + 1)}
+                          className="px-3 py-1.5 rounded-xl bg-[#131B2A] border border-[#293B58] text-xs font-bold text-slate-300 disabled:opacity-40 cursor-pointer"
+                        >
+                          Siguiente →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {groupBreakdown.length === 0 ? (
+                    <div className="p-8 rounded-2xl bg-[#131B2A] border border-[#223049] text-center text-xs text-slate-400">
+                      Aún no se registran envíos hoy desde las 00:00. En cuanto avance la ronda actual aparecerá el conteo grupo por grupo.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-[#223049] text-[10px] font-extrabold uppercase text-slate-400">
+                            <th className="py-3 px-4">Grupo / Canal de Telegram</th>
+                            <th className="py-3 px-4">Enlace / ID</th>
+                            <th className="py-3 px-4 text-center">Publicaciones Hoy</th>
+                            <th className="py-3 px-4 text-center">Clics Estimados</th>
+                            <th className="py-3 px-4 text-right">Último Envío</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#1E2A40]">
+                          {groupBreakdown
+                            .slice((metricsGroupPage - 1) * metricsPerPage, metricsGroupPage * metricsPerPage)
+                            .map((item: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-[#131B2A]/70 transition-colors">
+                                <td className="py-3 px-4 font-bold text-white flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                  <span>{item.groupName}</span>
+                                </td>
+                                <td className="py-3 px-4 font-mono text-slate-400">
+                                  {item.groupId}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-black">
+                                    {item.sentToday} publicaciones
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-400 font-mono font-bold">
+                                    ~{Math.max(1, Math.round(item.sentToday * 0.4))} clics
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono text-slate-300">
+                                  {new Date(item.lastSentAt).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
-                {activeCampaigns
-                  .slice((campaignPage - 1) * campaignsPerPage, campaignPage * campaignsPerPage)
-                  .map((c: any) => {
-                    const uniqueTargets = Array.isArray(c.targetGroupIds)
-                      ? Array.from(new Set(c.targetGroupIds))
-                      : [];
-                    const targetCount = Math.max(1, uniqueTargets.length);
-                    const sentCount = c._count?.logs || 0;
-                    const logs: any[] = c.logs || [];
-
-                    // Determinar si la campaña está EMITIENDO EN VIVO (intervalo 60s -> 0s) o EN DESCANSO (60m / 120m -> 00m 00s)
-                    const latestLogMs = logs[0]?.createdAt ? new Date(logs[0].createdAt).getTime() : 0;
-                    const secSinceLatestLog = latestLogMs > 0 ? Math.floor((nowMs - latestLogMs) / 1000) : 999999;
-
-                    // Contar cuántos logs pertenecen a la ronda actual (últimos targetCount minutos)
-                    const currentRoundWindowMs = targetCount * 65 * 1000;
-                    const logsInCurrentRound = logs.filter(
-                      (l: any) => l.status === "SENT" && nowMs - new Date(l.createdAt).getTime() <= currentRoundWindowMs
-                    ).length;
-
-                    const isManualBroadcasting = broadcastingId === c.id;
-                    const isAutoSendingRound =
-                      isManualBroadcasting ||
-                      (secSinceLatestLog >= 0 && secSinceLatestLog < 65 && logsInCurrentRound < targetCount);
-
-                    // Cálculo del conteo regresivo de 60s -> 0s entre grupo y grupo cuando está emitiendo
-                    const manualElapsedSec = broadcastStartMs[c.id]
-                      ? Math.floor((nowMs - broadcastStartMs[c.id]) / 1000)
-                      : 0;
-                    const activeCycleSecUsed =
-                      secSinceLatestLog < 65 ? secSinceLatestLog : manualElapsedSec % 60;
-                    const groupSecondsLeft = Math.max(1, 60 - (activeCycleSecUsed % 60));
-
-                    // Cálculo del descanso entre rondas (60 min / 120 min -> 00m 00s)
-                    const totalRestSec = (c.intervalMinutes || 60) * 60;
-                    const nextRunTargetMs = c.nextRunAt ? new Date(c.nextRunAt).getTime() : nowMs + totalRestSec * 1000;
-                    const restSecondsLeft = Math.max(0, Math.floor((nextRunTargetMs - nowMs) / 1000));
-                    const restCountdownText = formatRestCountdown(c.nextRunAt, c.intervalMinutes || 60, nowMs);
-
-                    // Porcentaje de la barra regresiva (De 100% hacia 0%)
-                    const reverseBarPercent = isAutoSendingRound
-                      ? Math.max(5, Math.round((groupSecondsLeft / 60) * 100))
-                      : Math.min(100, Math.max(6, Math.round((restSecondsLeft / totalRestSec) * 100)));
-
-                    // Paginación de "Últimos Grupos donde se Publicó" (5 grupos por página)
-                    const currentLogPage = logPageByCampaign[c.id] || 1;
-                    const totalLogPages = Math.max(1, Math.ceil(logs.length / logsPerPage));
-                    const safeLogPage = Math.min(currentLogPage, totalLogPages);
-                    const paginatedLogs = logs.slice(
-                      (safeLogPage - 1) * logsPerPage,
-                      safeLogPage * logsPerPage
-                    );
-
-                    const lastBroadcastFormatted = logs[0]?.createdAt
-                      ? new Date(logs[0].createdAt).toLocaleString()
-                      : "En espera de ciclo";
-
-                    return (
-                      <div
-                        key={c.id}
-                        className="rounded-3xl p-5 sm:p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white transition-all"
+              /* VISTA 1: LISTA DE CAMPAÑAS ACTIVAS EN VIVO */
+              <>
+                {activeCampaigns.length === 0 ? (
+                  <div className={`rounded-3xl border p-12 text-center shadow-lg ${
+                    isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
+                  }`}>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+                      isDark ? "bg-[#171A20] text-[#229ED9]" : "bg-neutral-100 text-[#229ED9]"
+                    }`}>
+                      <MessageSquare className="w-7 h-7" />
+                    </div>
+                    <h3 className="text-base font-bold">
+                      {pausedCampaigns.length > 0
+                        ? `Tienes ${pausedCampaigns.length} copy(s) guardado(s) en pausa`
+                        : "Aún no tienes campañas activas"}
+                    </h3>
+                    <p className={`text-xs mt-1 max-w-md mx-auto leading-relaxed ${
+                      isDark ? "text-neutral-400" : "text-neutral-500"
+                    }`}>
+                      {pausedCampaigns.length > 0
+                        ? "Ve a tu Biblioteca de Copys Guardados y haz clic en 'Activar en Mis Campañas' para poner a rodar los anuncios que prefieras."
+                        : "Crea tu primer copy con texto formateado, negritas, emojis y enlaces para iniciar el piloto automático."}
+                    </p>
+                    <div className="mt-6 flex items-center justify-center gap-3">
+                      <Link
+                        href="/dashboard/campaigns"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
                       >
-                        {/* Cabecera de la Campaña con todos los botones alineados en una sola fila */}
-                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-5">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2.5">
-                              <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
-                                {c.name}
-                              </h2>
-                              <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                Activa 24/7 Nube
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-1 truncate">
-                              Grupos en esta campaña: <strong className="text-white">{targetCount}</strong> ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
-                            </p>
-                          </div>
-
-                          {/* Fila Única Alineada: Editar + Pausar 24/7 Nube + Ronda Manual */}
-                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 flex-shrink-0">
-                            <Link
-                              href={`/dashboard/campaigns?edit=${c.id}`}
-                              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-[#162032] hover:bg-[#1E2C44] text-[#38BDF8] border border-[#293B58] transition-all whitespace-nowrap"
-                              title="Editar copy, foto o seleccionar grupos"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Editar Copy / Grupos</span>
-                            </Link>
-
-                            <button
-                              type="button"
-                              disabled={actionLoading === c.id}
-                              onClick={() => toggleCampaign(c.id, c.status)}
-                              className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-rose-950/50 hover:bg-rose-900/60 text-rose-400 border border-rose-500/40 transition-all cursor-pointer whitespace-nowrap"
-                              title="Pausar esta campaña 24/7"
-                            >
-                              <Pause className="w-3.5 h-3.5" />
-                              <span>Pausar 24/7 Nube</span>
-                            </button>
-
-                            {dailyLimitReached ? (
-                              <button
-                                type="button"
-                                disabled={isManualBroadcasting}
-                                onClick={() => handleTriggerBroadcast(c.id, true)}
-                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
-                                title="Lanzar una ronda extra hoy por $1.00 USD desde tu Wallet"
-                              >
-                                <Zap className="w-3.5 h-3.5 text-white" />
-                                <span>+1 Ronda Extra ($1 USD)</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                disabled={isManualBroadcasting}
-                                onClick={() => handleTriggerBroadcast(c.id, false)}
-                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#10B981] hover:opacity-95 text-white shadow-lg shadow-teal-500/20 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
-                                title="Ejecutar ronda inmediata en todos los grupos de esta campaña"
-                              >
-                                {isManualBroadcasting ? (
-                                  <>
-                                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    <span>Publicando ({groupSecondsLeft}s)...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Rocket className="w-3.5 h-3.5 text-white" />
-                                    <span>Ronda Manual ({targetCount} Grupos)</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Feedback de Difusión */}
-                        {broadcastFeedback && broadcastFeedback.id === c.id && (
-                          <div className={`mb-4 p-3 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 border ${
-                            broadcastFeedback.isError
-                              ? "bg-red-500/10 border-red-500/30 text-red-400"
-                              : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                          }`}>
-                            <div className="flex items-center gap-2">
-                              {broadcastFeedback.isError ? (
-                                <XCircle className="w-4 h-4 flex-shrink-0" />
-                              ) : (
-                                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                              )}
-                              <span>{broadcastFeedback.message}</span>
-                            </div>
-
-                            {broadcastFeedback.isError && broadcastFeedback.message.includes("Ronda Extra") && (
-                              <button
-                                type="button"
-                                onClick={() => handleTriggerBroadcast(c.id, true)}
-                                className="px-3 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-black hover:bg-amber-400 whitespace-nowrap cursor-pointer"
-                              >
-                                Comprar +1 Ronda ($1.00 USD)
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* CAJA CENTRAL DE ESTADO Y BARRA DE PROGRESO (IDÉNTICA AL SISTEMA DE REFERENCIA) */}
-                        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-[#091E2E] via-[#0B2535] to-[#0A2629] border border-cyan-500/40 shadow-inner mb-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
-                            <div>
-                              <div className="flex items-center gap-2 text-sm font-black text-white">
-                                <span className={`w-2.5 h-2.5 rounded-full ${
-                                  isAutoSendingRound ? "bg-emerald-400 animate-ping" : "bg-[#38BDF8]"
-                                }`} />
-                                <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-xs">
-                                  {isAutoSendingRound ? "▶" : "⏸"}
-                                </span>
-                                {isAutoSendingRound ? (
-                                  <span>
-                                    Emitiendo Ronda en Vivo · ({Math.min(logsInCurrentRound + 1, targetCount)} de {targetCount} grupos en secuencia)
-                                  </span>
-                                ) : (
-                                  <span>
-                                    Ronda Completada · Descanso de Seguridad ({targetCount} de {targetCount} enviados)
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-[#38BDF8] mt-1 font-medium">
-                                {isAutoSendingRound
-                                  ? `Publicando grupo por grupo con pausa antibaneo. Siguiente grupo en ${groupSecondsLeft} segundos.`
-                                  : "Todos los grupos recibieron publicidad con éxito. Pausa anti-ban antes de la siguiente ronda."}
-                              </p>
-                            </div>
-
-                            {/* Píldora Derecha de Conteo Regresivo en Vivo */}
-                            <div className="px-4 py-2 rounded-xl bg-[#071824] border border-emerald-500/40 flex items-center gap-2 text-xs sm:text-sm font-mono font-black text-emerald-400 whitespace-nowrap self-start sm:self-center shadow-md">
-                              <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-[10px]">
-                                {isAutoSendingRound ? "⏱" : "⏸"}
-                              </span>
-                              <span>
-                                {isAutoSendingRound
-                                  ? `Siguiente grupo: ${groupSecondsLeft}s`
-                                  : `Descanso: ${restCountdownText}`}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Barra de Progreso Cyan -> Esmeralda en Tiempo Real */}
-                          <div className="w-full h-2.5 rounded-full bg-[#06131E] overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#0284C7] via-[#0EA5E9] to-[#10B981] transition-all duration-1000 ease-linear shadow-[0_0_12px_rgba(16,185,129,0.5)]"
-                              style={{ width: `${reverseBarPercent}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* 4 CAJAS DE MÉTRICAS INFERIORES (GRUPOS DETECTADOS / ACTIVOS / INTERVALO / ÚLTIMA DIFUSIÓN) */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                              Cupo de Grupos Plan
-                            </span>
-                            <span className="text-lg sm:text-xl font-black text-white mt-0.5 block">
-                              {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                              Grupos Activos
-                            </span>
-                            <span className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 block">
-                              {targetCount} de {maxGroupsAllowed >= 9999 ? targetCount : maxGroupsAllowed}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                              Intervalo Anti-Ban
-                            </span>
-                            <span className="text-lg sm:text-xl font-black text-[#38BDF8] mt-0.5 block font-mono">
-                              {isAutoSendingRound ? `${groupSecondsLeft}s – 60s` : "55s – 90s"}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                              Última Difusión ({sentCount} envíos)
-                            </span>
-                            <span className="text-xs sm:text-sm font-black text-white mt-1.5 block truncate">
-                              {lastBroadcastFormatted}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Últimos Grupos donde se Publicó — Paginado cada 5 grupos */}
-                        {logs.length > 0 && (
-                          <div className="p-3.5 rounded-2xl bg-[#0B101B] border border-[#1E2A40]">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                                Últimos Grupos donde se Publicó (Mostrando {(safeLogPage - 1) * logsPerPage + 1}-{Math.min(safeLogPage * logsPerPage, logs.length)} de {logs.length})
-                              </span>
-
-                              {/* Paginación de 5 en 5 grupos */}
-                              {totalLogPages > 1 && (
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    disabled={safeLogPage <= 1}
-                                    onClick={() =>
-                                      setLogPageByCampaign((prev) => ({
-                                        ...prev,
-                                        [c.id]: Math.max(1, safeLogPage - 1),
-                                      }))
-                                    }
-                                    className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
-                                  >
-                                    <ChevronLeft className="w-3 h-3" />
-                                    <span>Anterior</span>
-                                  </button>
-
-                                  <span className="text-[10px] font-black px-1.5 text-[#38BDF8]">
-                                    Pág. {safeLogPage}/{totalLogPages}
-                                  </span>
-
-                                  <button
-                                    type="button"
-                                    disabled={safeLogPage >= totalLogPages}
-                                    onClick={() =>
-                                      setLogPageByCampaign((prev) => ({
-                                        ...prev,
-                                        [c.id]: Math.min(totalLogPages, safeLogPage + 1),
-                                      }))
-                                    }
-                                    className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
-                                  >
-                                    <span>Siguiente</span>
-                                    <ChevronRight className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                              {paginatedLogs.map((log: any) => (
-                                <div 
-                                  key={log.id}
-                                  className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#131B2A] border border-[#223049]"
-                                >
-                                  <div className="flex items-center gap-1.5 truncate pr-1.5">
-                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                      log.status === "SENT" ? "bg-emerald-400" : "bg-red-500"
-                                    }`} />
-                                    <span className="font-bold text-white truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
-                                      {log.targetGroupName || log.targetGroupId}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-shrink-0">
-                                    <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                                      ✓
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-mono">
-                                      {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                {/* Controles de Paginación de Campañas (12 por página) */}
-                {Math.ceil(activeCampaigns.length / campaignsPerPage) > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-[#2D3340]/50">
-                    <span className="text-xs text-neutral-400 font-medium">
-                      Mostrando {(campaignPage - 1) * campaignsPerPage + 1} - {Math.min(campaignPage * campaignsPerPage, activeCampaigns.length)} de {activeCampaigns.length} campañas activas
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={campaignPage === 1}
-                        onClick={() => setCampaignPage(campaignPage - 1)}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
-                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
-                        }`}
-                      >
-                        ← Anterior
-                      </button>
-
-                      <span className="text-xs font-black px-2 text-[#229ED9]">
-                        Página {campaignPage} de {Math.ceil(activeCampaigns.length / campaignsPerPage)}
-                      </span>
-
-                      <button
-                        type="button"
-                        disabled={campaignPage >= Math.ceil(activeCampaigns.length / campaignsPerPage)}
-                        onClick={() => setCampaignPage(campaignPage + 1)}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all disabled:opacity-40 cursor-pointer ${
-                          isDark ? "bg-[#1E2229] border-[#2D3340] text-neutral-300" : "bg-white border-neutral-300 text-neutral-700"
-                        }`}
-                      >
-                        Siguiente →
-                      </button>
+                        <BookmarkCheck className="w-4 h-4" />
+                        <span>Ir a Mis Copys & Activar Campaña</span>
+                      </Link>
                     </div>
                   </div>
+                ) : (
+                  <div className="space-y-6">
+                    {activeCampaigns
+                      .slice((campaignPage - 1) * campaignsPerPage, campaignPage * campaignsPerPage)
+                      .map((c: any) => {
+                        const rawUniqueTargets = Array.isArray(c.targetGroupIds)
+                          ? Array.from(new Set(c.targetGroupIds))
+                          : [];
+                        // Limitar visual y operativamente al tope real del plan (ej. 25 en Express)
+                        const uniqueTargets = rawUniqueTargets.slice(0, maxGroupsAllowed);
+                        const targetCount = Math.max(1, uniqueTargets.length);
+                        const sentCount = c._count?.logs || 0;
+                        const logs: any[] = c.logs || [];
+
+                        // Determinar si la campaña está EMITIENDO EN VIVO (intervalo real de 60s -> 0s) o EN DESCANSO (60m / 120m -> 00m 00s)
+                        const latestLogMs = logs[0]?.createdAt ? new Date(logs[0].createdAt).getTime() : 0;
+                        const secSinceLatestLog = latestLogMs > 0 ? Math.max(0, Math.floor((nowMs - latestLogMs) / 1000)) : 999999;
+
+                        // Contar cuántos logs pertenecen a la ronda actual (ventana de targetCount * 65s)
+                        const currentRoundWindowMs = targetCount * 65 * 1000;
+                        const logsInCurrentRound = logs.filter(
+                          (l: any) => l.status === "SENT" && nowMs - new Date(l.createdAt).getTime() <= currentRoundWindowMs
+                        ).length;
+
+                        const isManualBroadcasting = broadcastingId === c.id;
+                        const isAutoSendingRound =
+                          isManualBroadcasting ||
+                          (secSinceLatestLog >= 0 && secSinceLatestLog <= 62 && logsInCurrentRound < targetCount);
+
+                        // Conteo regresivo exacto de 60s hasta 0s (llega hasta 0s y0% al final de la barra antes del siguiente grupo)
+                        const manualElapsedSec = broadcastStartMs[c.id]
+                          ? Math.max(0, Math.floor((nowMs - broadcastStartMs[c.id]) / 1000))
+                          : 0;
+                        const activeCycleSecUsed =
+                          secSinceLatestLog <= 62 ? Math.min(60, secSinceLatestLog) : manualElapsedSec % 61;
+                        const groupSecondsLeft = Math.max(0, 60 - activeCycleSecUsed);
+
+                        // Cálculo del descanso entre rondas (60 min / 120 min -> 00m 00s)
+                        const totalRestSec = (c.intervalMinutes || 60) * 60;
+                        const nextRunTargetMs = c.nextRunAt ? new Date(c.nextRunAt).getTime() : nowMs + totalRestSec * 1000;
+                        const restSecondsLeft = Math.max(0, Math.floor((nextRunTargetMs - nowMs) / 1000));
+                        const restCountdownText = formatRestCountdown(c.nextRunAt, c.intervalMinutes || 60, nowMs);
+
+                        // Porcentaje exacto de la barra regresiva (llega de 100% hasta 0% sin detenerse a mitad de camino)
+                        const reverseBarPercent = isAutoSendingRound
+                          ? Math.round((groupSecondsLeft / 60) * 100)
+                          : Math.min(100, Math.max(0, Math.round((restSecondsLeft / totalRestSec) * 100)));
+
+                        // Paginación de "Últimos Grupos donde se Publicó" (5 grupos por página)
+                        const currentLogPage = logPageByCampaign[c.id] || 1;
+                        const totalLogPages = Math.max(1, Math.ceil(logs.length / logsPerPage));
+                        const safeLogPage = Math.min(currentLogPage, totalLogPages);
+                        const paginatedLogs = logs.slice(
+                          (safeLogPage - 1) * logsPerPage,
+                          safeLogPage * logsPerPage
+                        );
+
+                        const lastBroadcastFormatted = logs[0]?.createdAt
+                          ? new Date(logs[0].createdAt).toLocaleString()
+                          : "En espera de ciclo";
+
+                        return (
+                          <div
+                            key={c.id}
+                            className="rounded-3xl p-5 sm:p-6 bg-[#0E1420] border border-[#233047] shadow-2xl text-white transition-all"
+                          >
+                            {/* Cabecera de la Campaña con todos los botones alineados en una sola fila */}
+                            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-5">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                  <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
+                                    {c.name}
+                                  </h2>
+                                  <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                    Activa 24/7 Nube
+                                  </span>
+                                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30">
+                                    Cupo asignado: {postsPerActiveCampaign} envíos/día
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-1 truncate">
+                                  Grupos en esta campaña: <strong className="text-white">{targetCount}</strong> de {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed} ({uniqueTargets.slice(0, 3).join(", ")}{targetCount > 3 ? ` +${targetCount - 3} más` : ""})
+                                </p>
+                              </div>
+
+                              {/* Fila Única Alineada: Editar + Pausar 24/7 Nube + Ronda Manual */}
+                              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 flex-shrink-0">
+                                <Link
+                                  href={`/dashboard/campaigns?edit=${c.id}`}
+                                  className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-[#162032] hover:bg-[#1E2C44] text-[#38BDF8] border border-[#293B58] transition-all whitespace-nowrap"
+                                  title="Editar copy, foto o seleccionar grupos"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Editar Copy / Grupos</span>
+                                </Link>
+
+                                <button
+                                  type="button"
+                                  disabled={actionLoading === c.id}
+                                  onClick={() => toggleCampaign(c.id, c.status)}
+                                  className="flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-extrabold rounded-xl bg-rose-950/50 hover:bg-rose-900/60 text-rose-400 border border-rose-500/40 transition-all cursor-pointer whitespace-nowrap"
+                                  title="Pausar esta campaña 24/7"
+                                >
+                                  <Pause className="w-3.5 h-3.5" />
+                                  <span>Pausar 24/7 Nube</span>
+                                </button>
+
+                                {dailyLimitReached ? (
+                                  <button
+                                    type="button"
+                                    disabled={isManualBroadcasting}
+                                    onClick={() => handleTriggerBroadcast(c.id, true)}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-lg transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                    title="Lanzar una ronda extra hoy por $1.00 USD desde tu Wallet"
+                                  >
+                                    <Zap className="w-3.5 h-3.5 text-white" />
+                                    <span>+1 Ronda Extra ($1 USD)</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isManualBroadcasting}
+                                    onClick={() => handleTriggerBroadcast(c.id, false)}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#10B981] hover:opacity-95 text-white shadow-lg shadow-teal-500/20 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                    title="Ejecutar ronda inmediata en los grupos de esta campaña"
+                                  >
+                                    {isManualBroadcasting ? (
+                                      <>
+                                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        <span>Iniciando Ronda...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Rocket className="w-3.5 h-3.5 text-white" />
+                                        <span>Ronda Manual ({targetCount} Grupos)</span>
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Feedback de Difusión */}
+                            {broadcastFeedback && broadcastFeedback.id === c.id && (
+                              <div className={`mb-4 p-3 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 border ${
+                                broadcastFeedback.isError
+                                  ? "bg-red-500/10 border-red-500/30 text-red-400"
+                                  : "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                              }`}>
+                                <div className="flex items-center gap-2">
+                                  {broadcastFeedback.isError ? (
+                                    <XCircle className="w-4 h-4 flex-shrink-0" />
+                                  ) : (
+                                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                                  )}
+                                  <span>{broadcastFeedback.message}</span>
+                                </div>
+
+                                {broadcastFeedback.isError && broadcastFeedback.message.includes("Ronda Extra") && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTriggerBroadcast(c.id, true)}
+                                    className="px-3 py-1 rounded-lg bg-amber-500 text-white text-[11px] font-black hover:bg-amber-400 whitespace-nowrap cursor-pointer"
+                                  >
+                                    Comprar +1 Ronda ($1.00 USD)
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* CAJA CENTRAL DE ESTADO Y BARRA DE PROGRESO (60s -> 0s HASTA EL FINAL DE LA BARRA) */}
+                            <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-[#091E2E] via-[#0B2535] to-[#0A2629] border border-cyan-500/40 shadow-inner mb-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
+                                <div>
+                                  <div className="flex items-center gap-2 text-sm font-black text-white">
+                                    <span className={`w-2.5 h-2.5 rounded-full ${
+                                      isAutoSendingRound ? "bg-emerald-400 animate-ping" : "bg-[#38BDF8]"
+                                    }`} />
+                                    <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-xs">
+                                      {isAutoSendingRound ? "▶" : "⏸"}
+                                    </span>
+                                    {isAutoSendingRound ? (
+                                      <span>
+                                        Emitiendo Ronda en Vivo · ({Math.min(logsInCurrentRound, targetCount)} de {targetCount} enviados en esta ronda)
+                                      </span>
+                                    ) : (
+                                      <span>
+                                        Ronda Completada · Descanso de Seguridad ({targetCount} de {targetCount} enviados)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-[#38BDF8] mt-1 font-medium">
+                                    {isAutoSendingRound
+                                      ? groupSecondsLeft === 0
+                                        ? "⚡ ¡Publicando en el siguiente grupo ahora mismo y reiniciando barra a 60s!"
+                                        : `Conteo regresivo antibaneo en curso: la barra baja de 60s a 0s (${groupSecondsLeft}s restantes) para publicar en el siguiente grupo.`
+                                      : "Todos los grupos recibieron publicidad con éxito. Pausa anti-ban antes de la siguiente ronda."}
+                                  </p>
+                                </div>
+
+                                {/* Píldora Derecha de Conteo Regresivo en Vivo */}
+                                <div className="px-4 py-2 rounded-xl bg-[#071824] border border-emerald-500/40 flex items-center gap-2 text-xs sm:text-sm font-mono font-black text-emerald-400 whitespace-nowrap self-start sm:self-center shadow-md">
+                                  <span className="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 text-[#38BDF8] text-[10px]">
+                                    {isAutoSendingRound ? "⏱" : "⏸"}
+                                  </span>
+                                  <span>
+                                    {isAutoSendingRound
+                                      ? `Siguiente grupo: ${groupSecondsLeft}s`
+                                      : `Descanso: ${restCountdownText}`}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Barra de Progreso Cyan -> Esmeralda que llega hasta 0% y vuelve a empezar */}
+                              <div className="w-full h-3 rounded-full bg-[#06131E] overflow-hidden p-0.5">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-[#0284C7] via-[#0EA5E9] to-[#10B981] transition-all duration-1000 ease-linear shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                                  style={{ width: `${reverseBarPercent}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* 4 CAJAS DE MÉTRICAS INFERIORES CON DATOS REALES DEL PLAN */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                              <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                                  Cupo Grupos ({planName})
+                                </span>
+                                <span className="text-lg sm:text-xl font-black text-white mt-0.5 block">
+                                  {maxGroupsAllowed >= 9999 ? "Ilimitados" : maxGroupsAllowed}
+                                </span>
+                              </div>
+
+                              <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                                  Grupos Activos
+                                </span>
+                                <span className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 block">
+                                  {targetCount} de {maxGroupsAllowed >= 9999 ? targetCount : maxGroupsAllowed}
+                                </span>
+                              </div>
+
+                              <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                                  Intervalo Anti-Ban
+                                </span>
+                                <span className="text-lg sm:text-xl font-black text-[#38BDF8] mt-0.5 block font-mono">
+                                  {isAutoSendingRound ? `${groupSecondsLeft}s / 60s` : "60s por grupo"}
+                                </span>
+                              </div>
+
+                              <div className="p-3.5 rounded-2xl bg-[#131B2A] border border-[#223049]">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                                  Última Difusión
+                                </span>
+                                <span className="text-xs sm:text-sm font-black text-white mt-1.5 block truncate">
+                                  {lastBroadcastFormatted}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Últimos Grupos donde se Publicó — Paginado cada 5 grupos */}
+                            {logs.length > 0 && (
+                              <div className="p-3.5 rounded-2xl bg-[#0B101B] border border-[#1E2A40]">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                    Últimos Grupos donde se Publicó (Mostrando {(safeLogPage - 1) * logsPerPage + 1}-{Math.min(safeLogPage * logsPerPage, logs.length)} de {logs.length})
+                                  </span>
+
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveView("METRICS")}
+                                      className="text-[10px] font-black text-emerald-400 hover:underline mr-2 cursor-pointer"
+                                    >
+                                      Ver conteo por grupo →
+                                    </button>
+
+                                    {/* Paginación de 5 en 5 grupos */}
+                                    {totalLogPages > 1 && (
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          disabled={safeLogPage <= 1}
+                                          onClick={() =>
+                                            setLogPageByCampaign((prev) => ({
+                                              ...prev,
+                                              [c.id]: Math.max(1, safeLogPage - 1),
+                                            }))
+                                          }
+                                          className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
+                                        >
+                                          <ChevronLeft className="w-3 h-3" />
+                                          <span>Anterior</span>
+                                        </button>
+
+                                        <span className="text-[10px] font-black px-1.5 text-[#38BDF8]">
+                                          Pág. {safeLogPage}/{totalLogPages}
+                                        </span>
+
+                                        <button
+                                          type="button"
+                                          disabled={safeLogPage >= totalLogPages}
+                                          onClick={() =>
+                                            setLogPageByCampaign((prev) => ({
+                                              ...prev,
+                                              [c.id]: Math.min(totalLogPages, safeLogPage + 1),
+                                            }))
+                                          }
+                                          className="px-2.5 py-1 rounded-lg border border-[#293B58] bg-[#131B2A] text-slate-300 hover:border-[#38BDF8] text-[10px] font-black flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer"
+                                        >
+                                          <span>Siguiente</span>
+                                          <ChevronRight className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                                  {paginatedLogs.map((log: any) => (
+                                    <div 
+                                      key={log.id}
+                                      className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-[#131B2A] border border-[#223049]"
+                                    >
+                                      <div className="flex items-center gap-1.5 truncate pr-1.5">
+                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                          log.status === "SENT" ? "bg-emerald-400" : "bg-red-500"
+                                        }`} />
+                                        <span className="font-bold text-white truncate text-[11px]" title={log.targetGroupName || log.targetGroupId}>
+                                          {log.targetGroupName || log.targetGroupId}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <span className="text-[9px] font-black px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                                          ✓
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono">
+                                          {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </>
         )}

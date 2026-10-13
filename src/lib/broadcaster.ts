@@ -199,7 +199,10 @@ export async function runCampaignBroadcast(
       ? targets.length
       : Math.max(0, maxDailyLimit - sentTodayCount);
 
-    const targetsToProcess = targets.slice(0, remainingQuota);
+    const maxGroupsByPlan =
+      dailyRate <= 0.85 ? 9999 : dailyRate <= 0.95 ? 100 : dailyRate <= 1.05 ? 50 : 25;
+
+    const targetsToProcess = targets.slice(0, Math.min(maxGroupsByPlan, remainingQuota));
 
     for (let i = 0; i < targetsToProcess.length; i++) {
       const rawTarget = targetsToProcess[i];
@@ -279,9 +282,9 @@ export async function runCampaignBroadcast(
           status: "SENT",
         });
 
-        // Pausa antibaneo entre grupo y grupo
+        // Pausa antibaneo real de 60 segundos entre grupo y grupo (para que la barra llegue de 60s a 0s)
         if (i < targetsToProcess.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 4000));
+          await new Promise((resolve) => setTimeout(resolve, 60000));
         }
       } catch (sendError: any) {
         console.error(`Error al enviar a ${rawTarget} con ${account.phoneNumber}:`, sendError);
