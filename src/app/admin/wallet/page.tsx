@@ -158,8 +158,8 @@ export default function AdminWalletRechargePage() {
           </div>
 
           <form onSubmit={handleRechargeByCode} className="xl:col-span-7 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-5 relative">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+              <div className="relative flex-shrink-0 w-full sm:w-52">
                 <Hash className="w-4 h-4 text-[#229ED9] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -175,7 +175,7 @@ export default function AdminWalletRechargePage() {
                 />
               </div>
 
-              <div className="sm:col-span-3 relative">
+              <div className="relative flex-shrink-0 w-full sm:w-36">
                 <span className="text-xs font-black text-emerald-500 absolute left-3.5 top-1/2 -translate-y-1/2">
                   $
                 </span>
@@ -198,15 +198,13 @@ export default function AdminWalletRechargePage() {
                 </span>
               </div>
 
-              <div className="sm:col-span-4">
-                <button
-                  type="submit"
-                  disabled={recharging}
-                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {recharging ? "Acreditando..." : "⚡ Acreditar Saldo Ahora"}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={recharging}
+                className="flex-shrink-0 py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              >
+                {recharging ? "Acreditando..." : "⚡ Acreditar Saldo Ahora"}
+              </button>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
