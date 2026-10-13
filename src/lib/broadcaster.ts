@@ -7,18 +7,20 @@ export interface BroadcastResult {
   target: string;
   status: "SENT" | "FAILED";
   groupTitle?: string;
+  botUsed?: string;
   error?: string;
 }
 
 /**
  * Ejecuta una ronda de difusión para una campaña específica
+ * Soportando Balanceo de Carga (Round-Robin) cuando se usa la Flota de Granja OttBot.
  */
 export async function runCampaignBroadcast(campaignId: string): Promise<{
   success: boolean;
   results: BroadcastResult[];
   error?: string;
 }> {
-  let client: any = null;
+  const connectedClients: Map<string, { client: any; account: any }> = new Map();
 
   try {
     const campaign = await prisma.campaign.findUnique({
@@ -42,29 +44,6 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       };
     }
 
-    // Determinar la cuenta de Telegram a usar
-    let account: any = campaign.telegramAccount;
-
-    // Si la cuenta asociada no tiene sesión o es un placeholder, buscar una cuenta de la granja activa
-    if (!account?.sessionString) {
-      account = await prisma.telegramAccount.findFirst({
-        where: { isSystemAccount: true, status: "CONNECTED" },
-      });
-    }
-
-    if (!account?.sessionString) {
-      return {
-        success: false,
-        results: [],
-        error: "No hay ninguna cuenta de Telegram disponible (ni personal ni de la granja) para emitir el mensaje.",
-      };
-    }
-
-    // Descifrar la sesión MTProto GramJS
-    const sessionString = decrypt(account.sessionString);
-    client = createTelegramClient(sessionString);
-    await client.connect();
-
     const targets = Array.isArray(campaign.targetGroupIds)
       ? (campaign.targetGroupIds as string[])
       : [];
@@ -77,10 +56,69 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       };
     }
 
+    // Determinar el pool de cuentas de Telegram a usar
+    // Si la campaña apunta a una cuenta de sistema (o la cuenta propia no tiene sesión), cargamos TODAS las cuentas conectadas de la granja
+    let accountPool: any[] = [];
+    const primaryAcc = campaign.telegramAccount;
+
+    if (primaryAcc && !primaryAcc.isSystemAccount && primaryAcc.sessionString && primaryAcc.status === "CONNECTED") {
+      // Usa la cuenta personal del cliente (o todas las cuentas personales conectadas de ese cliente si tiene plan multicuenta)
+      const clientAccounts = await prisma.telegramAccount.findMany({
+        where: {
+          userId: campaign.userId,
+          isSystemAccount: false,
+          status: "CONNECTED",
+          sessionString: { not: null },
+        },
+      });
+      accountPool = clientAccounts.length > 0 ? clientAccounts : [primaryAcc];
+    } else {
+      // Usa la Flota de Granja del SuperAdmin (Balanceo Round-Robin entre los 5+ bots conectados)
+      const farmAccounts = await prisma.telegramAccount.findMany({
+        where: {
+          isSystemAccount: true,
+          status: "CONNECTED",
+          sessionString: { not: null },
+        },
+      });
+      accountPool = farmAccounts;
+    }
+
+    if (accountPool.length === 0) {
+      return {
+        success: false,
+        results: [],
+        error: "No hay ninguna cuenta de Telegram conectada (ni personal ni de la granja) disponible para emitir.",
+      };
+    }
+
+    // Conectar los clientes GramJS del pool
+    for (const acc of accountPool) {
+      try {
+        const sessionString = decrypt(acc.sessionString);
+        const tgClient = createTelegramClient(sessionString);
+        await tgClient.connect();
+        connectedClients.set(acc.id, { client: tgClient, account: acc });
+      } catch (connErr) {
+        console.error(`Error al conectar cuenta ${acc.phoneNumber}:`, connErr);
+      }
+    }
+
+    const activePool = Array.from(connectedClients.values());
+    if (activePool.length === 0) {
+      return {
+        success: false,
+        results: [],
+        error: "No se pudo establecer conexión MTProto con las cuentas de Telegram.",
+      };
+    }
+
     const results: BroadcastResult[] = [];
     const tl = await import("telegram/tl");
 
-    for (const rawTarget of targets) {
+    // Recorrer grupos repartiendo la carga en rotación (Round-Robin) entre el pool activo
+    for (let i = 0; i < targets.length; i++) {
+      const rawTarget = targets[i];
       const cleanTarget = rawTarget
         .replace(/https?:\/\/t\.me\//, "")
         .replace(/^t\.me\//, "")
@@ -89,13 +127,15 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
 
       if (!cleanTarget) continue;
 
+      // Seleccionar bot en rotación: índice i % total_bots
+      const worker = activePool[i % activePool.length];
+      const { client, account } = worker;
+
       try {
-        // Resolver entidad de Telegram (grupo, canal o supergrupo)
         let entity: any = null;
         try {
           entity = await client.getEntity(cleanTarget);
         } catch (e: any) {
-          // Si es un canal público, intentar unirse
           try {
             const res = await client.invoke(
               new tl.Api.contacts.ResolveUsername({ username: cleanTarget })
@@ -110,7 +150,7 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
           throw new Error(`Grupo o canal no encontrado: ${cleanTarget}`);
         }
 
-        // Si es un canal o supergrupo, unirse automáticamente si aún no somos miembros
+        // Si aún no es miembro, intentar unirse
         try {
           await client.invoke(
             new tl.Api.channels.JoinChannel({
@@ -118,11 +158,10 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
             })
           );
         } catch (joinErr: any) {
-          // Ignorar si ya era miembro o no requiere JoinChannel
-          console.log(`JoinChannel info para @${cleanTarget}:`, joinErr?.message || "OK");
+          // Ya es miembro o no requiere JoinChannel
         }
 
-        // Enviar mensaje con foto o solo texto
+        // Enviar mensaje con foto o texto
         if (campaign.mediaUrl && campaign.mediaUrl.startsWith("data:image/")) {
           const base64Data = campaign.mediaUrl.split(",")[1];
           const buffer = Buffer.from(base64Data, "base64");
@@ -143,7 +182,6 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
 
         const groupTitle = entity?.title || entity?.username || cleanTarget;
 
-        // Registrar en message_logs como SENT
         await prisma.messageLog.create({
           data: {
             campaignId: campaign.id,
@@ -158,18 +196,18 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
         results.push({
           target: rawTarget,
           groupTitle,
+          botUsed: account.phoneNumber,
           status: "SENT",
         });
 
-        // Delay anti-baneo de seguridad (mínimo 3 segundos entre envíos en ronda manual)
-        if (targets.length > 1) {
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Pausa antibaneo entre envíos
+        if (i < targets.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 3500));
         }
       } catch (sendError: any) {
-        console.error(`Error al enviar a ${rawTarget}:`, sendError);
+        console.error(`Error al enviar a ${rawTarget} con ${account.phoneNumber}:`, sendError);
         const errMsg = sendError.message || "Error al publicar";
 
-        // Registrar en message_logs como FAILED
         await prisma.messageLog.create({
           data: {
             campaignId: campaign.id,
@@ -183,21 +221,23 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
 
         results.push({
           target: rawTarget,
+          botUsed: account.phoneNumber,
           status: "FAILED",
           error: errMsg,
         });
       }
     }
 
-    // Actualizar próxima ejecución de la campaña
-    const nextRun = new Date();
-    nextRun.setMinutes(nextRun.getMinutes() + (campaign.intervalMinutes || 60));
+    // Actualizar fecha de última y próxima ejecución automática
+    const now = new Date();
+    const nextRun = new Date(now.getTime() + (campaign.intervalMinutes || 60) * 60 * 1000);
 
     await prisma.campaign.update({
       where: { id: campaign.id },
       data: {
+        lastRunAt: now,
         nextRunAt: nextRun,
-        updatedAt: new Date(),
+        updatedAt: now,
       },
     });
 
@@ -213,7 +253,7 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       error: error.message || "Error al procesar la difusión",
     };
   } finally {
-    if (client) {
+    for (const { client } of connectedClients.values()) {
       try {
         await client.disconnect();
       } catch (e) {
@@ -221,4 +261,51 @@ export async function runCampaignBroadcast(campaignId: string): Promise<{
       }
     }
   }
+}
+
+/**
+ * Procesador 24/7 para ejecutar todas las campañas activas cuya hora programada (nextRunAt) haya llegado.
+ */
+export async function processDueCampaigns(): Promise<{
+  processedCount: number;
+  details: { campaignId: string; name: string; sent: number; failed: number }[];
+}> {
+  const now = new Date();
+
+  const dueCampaigns = await prisma.campaign.findMany({
+    where: {
+      status: "ACTIVE",
+      OR: [
+        { nextRunAt: { lte: now } },
+        { nextRunAt: null },
+      ],
+      user: {
+        isActive: true,
+        subscription: {
+          status: { in: ["ACTIVE", "TRIAL"] },
+          expiresAt: { gt: now },
+        },
+      },
+    },
+    take: 10,
+  });
+
+  const details = [];
+
+  for (const camp of dueCampaigns) {
+    const res = await runCampaignBroadcast(camp.id);
+    const sent = res.results.filter((r) => r.status === "SENT").length;
+    const failed = res.results.filter((r) => r.status === "FAILED").length;
+    details.push({
+      campaignId: camp.id,
+      name: camp.name,
+      sent,
+      failed,
+    });
+  }
+
+  return {
+    processedCount: dueCampaigns.length,
+    details,
+  };
 }

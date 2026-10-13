@@ -39,7 +39,8 @@ export default function ClientCampaignsPage() {
   const [libraryPage, setLibraryPage] = useState(1);
   const copiesPerPage = 12;
 
-  // Campos del Copy
+  // Campos del Copy y Edición
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -70,7 +71,27 @@ export default function ClientCampaignsPage() {
       const campData = await campRes.json();
 
       if (authData.authenticated) setSessionUser(authData.user);
-      if (campData.campaigns) setSavedCampaigns(campData.campaigns);
+      if (campData.campaigns) {
+        setSavedCampaigns(campData.campaigns);
+
+        // Si viene de /dashboard con ?edit=id, precargar esa campaña para editar
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const editId = params.get("edit");
+          if (editId) {
+            const targetCamp = campData.campaigns.find((item: any) => item.id === editId);
+            if (targetCamp) {
+              setEditingCampaignId(targetCamp.id);
+              setName(targetCamp.name || "");
+              setMessageContent(targetCamp.messageContent || "");
+              setMediaUrl(targetCamp.mediaUrl || "");
+              setIntervalMinutes(targetCamp.intervalMinutes || 60);
+              setGroupPills(Array.isArray(targetCamp.targetGroupIds) ? targetCamp.targetGroupIds : []);
+              setActiveTab("CREATE");
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error("Error al cargar datos:", err);
     }
@@ -206,8 +227,9 @@ export default function ClientCampaignsPage() {
     }
   };
 
-  // Cargar un copy existente en el editor
+  // Cargar un copy existente en el editor para editarlo
   const loadExistingCopy = (c: any) => {
+    setEditingCampaignId(c.id);
     setName(c.name || "");
     setMessageContent(c.messageContent || "");
     setMediaUrl(c.mediaUrl || "");
@@ -226,10 +248,12 @@ export default function ClientCampaignsPage() {
         throw new Error("Debes asignar al menos 1 grupo de Telegram destino.");
       }
 
+      const method = editingCampaignId ? "PATCH" : "POST";
       const res = await fetch("/api/campaigns", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: editingCampaignId || undefined,
           name,
           messageContent,
           mediaUrl: mediaUrl || null,
@@ -805,13 +829,37 @@ export default function ClientCampaignsPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black rounded-2xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {loading ? "Guardando campaña..." : "Guardar & Iniciar Difusión Automática"}
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {editingCampaignId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCampaignId(null);
+                          setName("");
+                          setMessageContent("");
+                          setMediaUrl("");
+                          setGroupPills([]);
+                        }}
+                        className={`px-4 py-3.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                          isDark ? "bg-[#171A20] border-[#2D3340] text-neutral-300" : "bg-neutral-100 border-neutral-300 text-neutral-700"
+                        }`}
+                      >
+                        Cancelar Edición (Crear Nuevo)
+                      </button>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-3.5 bg-gradient-to-r from-[#229ED9] to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-black rounded-2xl shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {loading
+                        ? "Guardando cambios..."
+                        : editingCampaignId
+                        ? "✓ Guardar Cambios en la Campaña"
+                        : "Guardar & Iniciar Difusión Automática 24/7"}
+                    </button>
+                  </div>
                 </form>
               </div>
 

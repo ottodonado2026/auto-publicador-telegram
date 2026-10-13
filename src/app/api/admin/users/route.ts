@@ -11,9 +11,12 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           email: true,
+          phoneNumber: true,
+          storeName: true,
           name: true,
           role: true,
           isActive: true,
+          walletBalance: true,
           createdAt: true,
           subscription: true,
           _count: {
@@ -52,11 +55,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Endpoint para recargar días o cambiar estado de membresía manualmente
+// Endpoint para recargar días, saldo de Wallet o cambiar estado de membresía manualmente
 export async function PATCH(req: NextRequest) {
   try {
     await requireSuperAdmin();
-    const { userId, daysToAdd, status, isActive } = await req.json();
+    const { userId, daysToAdd, walletCreditUSD, status, isActive } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: "userId es requerido" }, { status: 400 });
@@ -67,6 +70,27 @@ export async function PATCH(req: NextRequest) {
         where: { id: userId },
         data: { isActive },
       });
+    }
+
+    // Si el SuperAdmin acredita saldo en la Wallet del usuario
+    if (walletCreditUSD !== undefined && Number(walletCreditUSD) > 0) {
+      const amount = Number(walletCreditUSD);
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            walletBalance: { increment: amount },
+          },
+        }),
+        prisma.walletTransaction.create({
+          data: {
+            userId,
+            amount,
+            type: "CREDIT",
+            description: `Recarga acreditada por Administración (+$${amount.toFixed(2)} USD)`,
+          },
+        }),
+      ]);
     }
 
     if (daysToAdd !== undefined || status !== undefined) {

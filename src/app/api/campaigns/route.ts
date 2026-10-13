@@ -36,6 +36,7 @@ export async function GET() {
           name: true,
           phoneNumber: true,
           role: true,
+          walletBalance: true,
         },
       }),
     ]);
@@ -128,15 +129,40 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const session = await requireAuth();
-    const { id, status } = await req.json();
+    const { id, status, name, messageContent, mediaUrl, intervalMinutes, targetGroupIds, useSystemFarm } = await req.json();
+
+    if (!id) {
+      return NextResponse.json({ error: "ID de campaña requerido" }, { status: 400 });
+    }
+
+    const updateData: any = { updatedAt: new Date() };
+    if (status !== undefined) updateData.status = status;
+    if (name !== undefined) updateData.name = name;
+    if (messageContent !== undefined) updateData.messageContent = messageContent;
+    if (mediaUrl !== undefined) updateData.mediaUrl = mediaUrl || null;
+    if (intervalMinutes !== undefined) updateData.intervalMinutes = Number(intervalMinutes) || 60;
+    if (targetGroupIds !== undefined) updateData.targetGroupIds = targetGroupIds;
+
+    // Si actualiza la modalidad de cuenta o granja
+    if (useSystemFarm !== undefined) {
+      const account = await prisma.telegramAccount.findFirst({
+        where: useSystemFarm
+          ? { isSystemAccount: true, status: "CONNECTED" }
+          : { userId: session.userId, status: "CONNECTED" },
+      });
+      if (account) {
+        updateData.telegramAccountId = account.id;
+      }
+    }
 
     const campaign = await prisma.campaign.updateMany({
       where: { id, userId: session.userId },
-      data: { status },
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, campaign });
   } catch (error) {
-    return NextResponse.json({ error: "Error al actualizar estado" }, { status: 500 });
+    console.error("Error al actualizar campaña:", error);
+    return NextResponse.json({ error: "Error al actualizar campaña" }, { status: 500 });
   }
 }

@@ -22,8 +22,13 @@ export async function GET() {
         name: true,
         role: true,
         isActive: true,
+        walletBalance: true,
         createdAt: true,
         subscription: true,
+        walletTransactions: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+        },
         telegramAccounts: {
           select: {
             id: true,

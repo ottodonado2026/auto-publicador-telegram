@@ -8,7 +8,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { 
   Send, Plus, Play, Pause, AlertCircle, Clock, 
   CheckCircle2, Layers, MessageSquare, Activity, 
-  RefreshCw, Rocket, XCircle, ShieldCheck, Users, TrendingUp
+  RefreshCw, Rocket, XCircle, ShieldCheck, Users, TrendingUp, Edit3
 } from "lucide-react";
 
 export default function ClientDashboard() {
@@ -42,6 +42,9 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     fetchDashboard();
+    // Actualizar en tiempo real cada 30s para ver el progreso automático
+    const interval = setInterval(fetchDashboard, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleCampaign = async (id: string, currentStatus: string) => {
@@ -307,27 +310,53 @@ export default function ClientDashboard() {
                           </p>
                         </div>
 
-                        {/* Botones de Control */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={isBroadcasting || c.status !== "ACTIVE"}
-                            onClick={() => handleTriggerBroadcast(c.id)}
-                            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
-                            title="Emitir mensaje a Telegram inmediatamente"
+                        {/* Botones de Control: Piloto Automático 24/7, Editar y Pausar */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/dashboard/campaigns?edit=${c.id}`}
+                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border transition-all ${
+                              isDark
+                                ? "bg-[#171A20] hover:bg-[#252A34] text-[#229ED9] border-[#2D3340]"
+                                : "bg-neutral-50 hover:bg-neutral-100 text-[#229ED9] border-neutral-300"
+                            }`}
+                            title="Editar copy, foto o grupos de esta campaña"
                           >
-                            {isBroadcasting ? (
-                              <>
-                                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span>Emitiendo...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Rocket className="w-3.5 h-3.5 text-white" />
-                                <span>Publicar Ronda Ahora</span>
-                              </>
-                            )}
-                          </button>
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </Link>
+
+                          {c.status === "ACTIVE" ? (
+                            <button
+                              type="button"
+                              disabled={isBroadcasting}
+                              onClick={() => handleTriggerBroadcast(c.id)}
+                              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-md shadow-emerald-500/25 transition-all cursor-pointer disabled:opacity-50"
+                              title="La campaña está activa 24/7. Haz clic si deseas forzar una ronda inmediata ahora."
+                            >
+                              {isBroadcasting ? (
+                                <>
+                                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                  <span>Emitiendo en Vivo...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                                  <span>Activo 24/7 (Emitir Ahora)</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isBroadcasting}
+                              onClick={() => handleTriggerBroadcast(c.id)}
+                              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-xl bg-[#229ED9] hover:bg-blue-500 text-white shadow-md transition-all cursor-pointer disabled:opacity-50"
+                              title="Disparar una ronda manual de prueba"
+                            >
+                              <Rocket className="w-3.5 h-3.5 text-white" />
+                              <span>Publicar Ronda</span>
+                            </button>
+                          )}
 
                           <button
                             disabled={actionLoading === c.id}
@@ -348,7 +377,7 @@ export default function ClientDashboard() {
                             ) : (
                               <>
                                 <Play className="w-3.5 h-3.5" />
-                                <span>Activar</span>
+                                <span>Reanudar 24/7</span>
                               </>
                             )}
                           </button>

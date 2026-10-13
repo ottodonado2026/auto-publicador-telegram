@@ -50,19 +50,33 @@ model User {
   storeName    String?
   name         String?
   passwordHash String
-  role         Role          @default(CLIENT)
-  isActive     Boolean       @default(true)
-  otpCode      String?
-  otpExpiresAt DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  role          Role          @default(CLIENT)
+  isActive      Boolean       @default(true)
+  walletBalance Decimal       @default(0.00) @db.Decimal(10, 2)
+  otpCode       String?
+  otpExpiresAt  DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  subscription     Subscription?
-  telegramAccounts TelegramAccount[]
-  campaigns        Campaign[]
-  auditLogs        AuditLog[]
+  subscription       Subscription?
+  telegramAccounts   TelegramAccount[]
+  campaigns          Campaign[]
+  auditLogs          AuditLog[]
+  walletTransactions WalletTransaction[]
 
   @@map("users")
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(10, 2)
+  type        String   // "CREDIT" (Recarga) | "DEBIT" (Compra de Plan)
+  description String
+  createdAt   DateTime @default(now())
+
+  @@map("wallet_transactions")
 }
 
 model Subscription {

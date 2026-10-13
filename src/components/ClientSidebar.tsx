@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
   LayoutDashboard, Send, PlusCircle, 
-  CreditCard, LogOut, Clock, Sun, Moon, BookOpen
+  CreditCard, LogOut, Clock, Sun, Moon, BookOpen, Wallet
 } from "lucide-react";
 
 interface ClientSidebarProps {
@@ -34,6 +34,7 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
 
   const hasAccess = membership?.hasAccess;
   const isDark = theme === "dark";
+  const walletBalance = Number(user?.walletBalance || 0).toFixed(2);
 
   return (
     <aside className="w-64 bg-[#1E2229] border-r border-[#2B303C] flex flex-col justify-between h-screen fixed left-0 top-0 z-50 select-none">
@@ -80,12 +81,26 @@ export default function ClientSidebar({ user, membership }: ClientSidebarProps) 
         </nav>
       </div>
 
-      {/* Info Membresía, Switcher de Tema y Usuario Dinámico */}
+      {/* Info Membresía, Wallet, Switcher de Tema y Usuario Dinámico */}
       <div className="p-4 border-t border-[#2B303C] space-y-2.5">
+        {/* Tarjeta de Wallet Rápida */}
+        <Link
+          href="/dashboard/plans"
+          className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-950/60 to-[#171A20] border border-emerald-500/30 hover:border-emerald-400 transition-all group"
+        >
+          <span className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+            <Wallet className="w-3.5 h-3.5" />
+            <span>Mi Wallet:</span>
+          </span>
+          <span className="text-xs font-black text-white font-mono">
+            ${walletBalance} USD
+          </span>
+        </Link>
+
         {/* Toggle Tema Claro / Oscuro para el Cliente */}
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-[#171A20] text-neutral-300 border border-[#2B303C] hover:border-[#229ED9] transition-all"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold bg-[#171A20] text-neutral-300 border border-[#2B303C] hover:border-[#229ED9] transition-all cursor-pointer"
         >
           <span className="flex items-center gap-2">
             {isDark ? <Moon className="w-3.5 h-3.5 text-blue-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
