@@ -1,0 +1,152 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
+import { encrypt } from "@/lib/crypto";
+import { pendingTelegramAuths, cleanPhoneNumber } from "@/lib/telegram";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { phoneNumber, phoneCode, password2fa } = await req.json();
+
+    if (!phoneNumber || !phoneCode) {
+      return NextResponse.json(
+        { error: "Número de teléfono y código de verificación requeridos" },
+        { status: 400 }
+      );
+    }
+
+    const cleanPhone = cleanPhoneNumber(phoneNumber);
+    const pending = pendingTelegramAuths.get(cleanPhone);
+
+    if (!pending || !pending.client || !pending.registerData) {
+      return NextResponse.json(
+        { error: "La sesión de verificación ha expirado o no existe. Por favor solicita un nuevo código." },
+        { status: 400 }
+      );
+    }
+
+    const { client, phoneCodeHash, registerData } = pending;
+
+    // Verificar el código mediante Telegram MTProto
+    try {
+      await (client as any).invoke(
+        new (await import("telegram/tl")).Api.auth.SignIn({
+          phoneNumber: cleanPhone,
+          phoneCodeHash,
+          phoneCode: phoneCode.trim(),
+        })
+      );
+    } catch (err: any) {
+      if (err.message && err.message.includes("SESSION_PASSWORD_NEEDED")) {
+        if (password2fa) {
+          await (client as any).signInWithPassword({
+            password: password2fa,
+          });
+        } else {
+          return NextResponse.json({
+            require2fa: true,
+            message: "Tu cuenta de Telegram tiene activada la verificación en dos pasos (2FA). Por favor escribe tu contraseña de Telegram.",
+          });
+        }
+      } else {
+        console.error("Error al validar código con Telegram:", err);
+        return NextResponse.json(
+          { error: err.message || "Código incorrecto o expirado de Telegram." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Extraer sesión GramJS y datos de Telegram
+    let sessionString = "";
+    let me: any = null;
+    try {
+      sessionString = (client.session as any).save();
+      me = await client.getMe();
+    } catch (err) {
+      console.warn("No se pudo obtener sesión persistente o getMe de Telegram:", err);
+    }
+
+    // Calcular exactamente 24 horas de prueba gratuita (Trial)
+    const trialExpiry = new Date();
+    trialExpiry.setHours(trialExpiry.getHours() + 24);
+
+    // Determinar rol: Si no hay usuarios aún es SUPERADMIN, sino CLIENT
+    const totalUsers = await prisma.user.count();
+    const role = totalUsers === 0 ? "SUPERADMIN" : "CLIENT";
+
+    // Crear el usuario en Neon PostgreSQL
+    const user = await prisma.user.create({
+      data: {
+        phoneNumber: cleanPhone,
+        storeName: registerData.storeName,
+        name: registerData.name || registerData.storeName,
+        email: registerData.email || null,
+        passwordHash: registerData.passwordHash,
+        role,
+        subscription: {
+          create: {
+            status: "TRIAL",
+            dailyRate: 1.0,
+            expiresAt: trialExpiry,
+          },
+        },
+        ...(sessionString ? {
+          telegramAccounts: {
+            create: {
+              phoneNumber: cleanPhone,
+              sessionString: encrypt(sessionString),
+              telegramUserId: String(me?.id || ""),
+              firstName: me?.firstName || registerData.storeName || "",
+              username: me?.username || null,
+              status: "CONNECTED",
+              isSystemAccount: role === "SUPERADMIN",
+            },
+          },
+        } : {}),
+      },
+    });
+
+    // Limpiar estado temporal de memoria
+    pendingTelegramAuths.delete(cleanPhone);
+
+    // Generar JWT seguro
+    const token = signToken({
+      userId: user.id,
+      email: user.email || user.phoneNumber || "",
+      role: user.role,
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      message: "¡Cuenta creada y verificada exitosamente con Telegram! Tienes 24 horas de prueba.",
+      user: {
+        id: user.id,
+        phoneNumber: user.phoneNumber,
+        storeName: user.storeName,
+        name: user.name,
+        role: user.role,
+      },
+    });
+
+    response.cookies.set({
+      name: TOKEN_COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 días
+      path: "/",
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error en register-verify-code:", error);
+    return NextResponse.json(
+      { error: error.message || "Error interno al verificar y registrar usuario" },
+      { status: 500 }
+    );
+  }
+}

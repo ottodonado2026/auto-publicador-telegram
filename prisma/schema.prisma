@@ -45,11 +45,15 @@ enum MessageLogStatus {
 
 model User {
   id           String        @id @default(uuid())
-  email        String        @unique
+  email        String?       @unique
+  phoneNumber  String?       @unique
+  storeName    String?
   name         String?
   passwordHash String
   role         Role          @default(CLIENT)
   isActive     Boolean       @default(true)
+  otpCode      String?
+  otpExpiresAt DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 

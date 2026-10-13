@@ -2,19 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signToken, TOKEN_COOKIE_NAME } from "@/lib/auth";
+import { 
+  TELEGRAM_API_ID, 
+  TELEGRAM_API_HASH, 
+  createTelegramClient, 
+  pendingTelegramAuths, 
+  cleanPhoneNumber 
+} from "@/lib/telegram";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { identifier, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email y contraseña requeridos" }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json(
+        { error: "Teléfono / Tienda / Correo y contraseña requeridos" },
+        { status: 400 }
+      );
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const trimmed = identifier.trim();
+    const cleanPhone = cleanPhoneNumber(trimmed);
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    // Buscar por teléfono, nombre de tienda o correo
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phoneNumber: cleanPhone },
+          { phoneNumber: trimmed },
+          { storeName: { equals: trimmed, mode: "insensitive" } },
+          { email: { equals: trimmed.toLowerCase(), mode: "insensitive" } },
+        ],
+      },
       include: {
         subscription: true,
       },
@@ -25,7 +46,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!user.isActive) {
-      return NextResponse.json({ error: "Esta cuenta se encuentra inactiva o bloqueada" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Esta cuenta se encuentra inactiva o bloqueada. Contacta a soporte." },
+        { status: 403 }
+      );
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -33,9 +57,80 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
     }
 
+    // El Administrador Principal puede acceder directamente sin riesgo de bloqueo por flood de Telegram
+    if (user.role === "SUPERADMIN") {
+      const token = signToken({
+        userId: user.id,
+        email: user.email || user.phoneNumber || "",
+        role: user.role,
+      });
+
+      const response = NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          storeName: user.storeName,
+          name: user.name,
+          role: user.role,
+        },
+      });
+
+      response.cookies.set({
+        name: TOKEN_COOKIE_NAME,
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      });
+
+      return response;
+    }
+
+    // Para los clientes, verificamos con código de 5 dígitos a Telegram si tienen teléfono
+    if (user.phoneNumber) {
+      const clientPhone = cleanPhoneNumber(user.phoneNumber);
+      
+      const client = createTelegramClient("");
+      await client.connect();
+
+      const { phoneCodeHash } = await client.sendCode(
+        {
+          apiId: TELEGRAM_API_ID,
+          apiHash: TELEGRAM_API_HASH,
+        },
+        clientPhone
+      );
+
+      // Guardar en pendingAuth para validar en el siguiente paso
+      pendingTelegramAuths.set(clientPhone, {
+        client,
+        phoneCodeHash,
+        phoneNumber: clientPhone,
+        createdAt: Date.now(),
+        loginUserId: user.id,
+      });
+
+      const maskedPhone =
+        clientPhone.length > 6
+          ? `${clientPhone.slice(0, 4)} ••• ••• ${clientPhone.slice(-3)}`
+          : clientPhone;
+
+      return NextResponse.json({
+        requireOtp: true,
+        phoneNumber: clientPhone,
+        maskedPhone,
+        message: `Te hemos enviado un código de acceso a tu Telegram oficial (${maskedPhone}).`,
+      });
+    }
+
+    // Si es un usuario legacy sin teléfono asignado, iniciar sesión directamente
     const token = signToken({
       userId: user.id,
-      email: user.email,
+      email: user.email || user.phoneNumber || "",
       role: user.role,
     });
 
@@ -44,6 +139,8 @@ export async function POST(req: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
+        phoneNumber: user.phoneNumber,
+        storeName: user.storeName,
         name: user.name,
         role: user.role,
       },
@@ -60,8 +157,11 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en login:", error);
-    return NextResponse.json({ error: "Error interno del servidor al iniciar sesión" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Error interno del servidor al iniciar sesión" },
+      { status: 500 }
+    );
   }
 }

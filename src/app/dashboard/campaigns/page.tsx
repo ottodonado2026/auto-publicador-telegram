@@ -425,29 +425,89 @@ export default function CreateCampaignPage() {
               </div>
 
               {/* Explicación y Selección de Modalidad (Tu Cuenta vs Granja) */}
-              <div className={`p-4 rounded-2xl border ${
-                isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-300"
+              <div className={`p-5 rounded-3xl border-2 transition-all duration-300 ${
+                useSystemFarm
+                  ? isDark
+                    ? "bg-emerald-950/20 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+                    : "bg-emerald-50 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                  : isDark
+                    ? "bg-[#171A20] border-[#2D3340]"
+                    : "bg-neutral-50 border-neutral-300"
               }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs">Modalidad de Emisión:</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded font-extrabold bg-[#229ED9]/20 text-[#229ED9]">
-                      {useSystemFarm ? "Usando Granja de OttBot" : "Publicar con mi Cuenta Propia"}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-extrabold text-xs uppercase tracking-wider">
+                      Modalidad de Emisión:
                     </span>
+                    {useSystemFarm ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-white shadow-md shadow-emerald-500/30 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-white"></span>
+                        GRANJA ACTIVA
+                      </span>
+                    ) : (
+                      <span className="text-[11px] px-2.5 py-1 rounded-lg font-bold bg-[#229ED9]/20 text-[#229ED9]">
+                        Cuenta Propia
+                      </span>
+                    )}
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={useSystemFarm}
-                    onChange={(e) => setUseSystemFarm(e.target.checked)}
-                    className="w-5 h-5 accent-[#229ED9] rounded cursor-pointer"
-                  />
+
+                  {/* Botón de Activación de Granja */}
+                  <button
+                    type="button"
+                    onClick={() => setUseSystemFarm(!useSystemFarm)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+                      useSystemFarm
+                        ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/30 scale-105 ring-2 ring-emerald-400"
+                        : isDark
+                          ? "bg-[#252A34] hover:bg-[#2D3340] text-neutral-300 border border-neutral-600"
+                          : "bg-white hover:bg-neutral-100 text-neutral-700 border border-neutral-300"
+                    }`}
+                  >
+                    {useSystemFarm ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                        <span>✓ GRANJA ACTIVADA</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-neutral-400"></span>
+                        <span>Activar Granja OttBot</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                <p className={`text-[11px] leading-relaxed ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
-                  {useSystemFarm
-                    ? "✓ Activado: Los robots de OttBot se unirán y publicarán por ti en los enlaces de grupos que agregaste arriba. Ideal si no deseas conectar tu número."
-                    : "✓ Cuenta Propia: OttBot publicará desde tu número conectado tanto en los enlaces que agregues como en todos los grupos donde ya estés unido."}
-                </p>
+                <div className={`text-xs leading-relaxed transition-all ${
+                  useSystemFarm
+                    ? isDark
+                      ? "text-emerald-300 font-bold bg-emerald-950/40 p-3 rounded-2xl border border-emerald-500/30"
+                      : "text-emerald-900 font-bold bg-emerald-100/70 p-3 rounded-2xl border border-emerald-400/50"
+                    : isDark
+                      ? "text-neutral-400 p-2 font-normal"
+                      : "text-neutral-600 p-2 font-normal"
+                }`}>
+                  {useSystemFarm ? (
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none">🚀</span>
+                      <div>
+                        <strong className="block text-emerald-400 text-xs uppercase tracking-wide">
+                          Flota de OttBot Operando en tus Enlaces
+                        </strong>
+                        Nuestros robots oficiales se unirán a los enlaces de tus grupos y transmitirán tu anuncio con rotación inteligente y anti-bloqueo. Tu cuenta personal queda 100% protegida.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none">👤</span>
+                      <div>
+                        <strong className="block text-neutral-300 text-xs">
+                          Publicación con Cuenta Personal
+                        </strong>
+                        OttBot emitirá tus mensajes usando tu propio número conectado, enviando a tus enlaces añadidos y a los grupos donde ya estés integrado.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
