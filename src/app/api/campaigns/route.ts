@@ -34,6 +34,7 @@ export async function GET() {
         where: { id: session.userId },
         select: {
           id: true,
+          botCode: true,
           email: true,
           storeName: true,
           name: true,

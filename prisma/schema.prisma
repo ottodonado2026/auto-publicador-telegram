@@ -44,12 +44,13 @@ enum MessageLogStatus {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  email        String?       @unique
-  phoneNumber  String?       @unique
-  storeName    String?
-  name         String?
-  passwordHash String
+  id            String        @id @default(uuid())
+  botCode       String?       @unique
+  email         String?       @unique
+  phoneNumber   String?       @unique
+  storeName     String?
+  name          String?
+  passwordHash  String
   role          Role          @default(CLIENT)
   isActive      Boolean       @default(true)
   walletBalance Decimal       @default(0.00) @db.Decimal(10, 2)

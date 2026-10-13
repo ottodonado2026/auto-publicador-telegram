@@ -91,9 +91,12 @@ export async function POST(req: NextRequest) {
     const totalUsers = await prisma.user.count();
     const role = totalUsers === 0 ? "SUPERADMIN" : "CLIENT";
 
+    const generatedBotCode = `BOT-I${Math.floor(100000 + Math.random() * 900000)}`;
+
     // Crear el usuario en Neon PostgreSQL
     const user = await prisma.user.create({
       data: {
+        botCode: generatedBotCode,
         phoneNumber: cleanPhone,
         storeName: registerData.storeName,
         name: registerData.name || registerData.storeName,

@@ -6,10 +6,11 @@ export async function GET(req: NextRequest) {
   try {
     await requireSuperAdmin();
 
-    const [users, stats] = await Promise.all([
+    const [rawUsers, stats] = await Promise.all([
       prisma.user.findMany({
         select: {
           id: true,
+          botCode: true,
           email: true,
           phoneNumber: true,
           storeName: true,
@@ -42,6 +43,26 @@ export async function GET(req: NextRequest) {
       })(),
     ]);
 
+    // Asegurar que todos los usuarios tengan su código BOT-IXXXXXX
+    const users = await Promise.all(
+      rawUsers.map(async (u) => {
+        if (!u.botCode) {
+          const generatedCode = `BOT-I${Math.floor(100000 + Math.random() * 900000)}`;
+          try {
+            const updated = await prisma.user.update({
+              where: { id: u.id },
+              data: { botCode: generatedCode },
+              select: { botCode: true },
+            });
+            return { ...u, botCode: updated.botCode };
+          } catch {
+            return { ...u, botCode: generatedCode };
+          }
+        }
+        return u;
+      })
+    );
+
     return NextResponse.json({ users, stats });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
@@ -55,19 +76,47 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Endpoint para recargar días, saldo de Wallet o cambiar estado de membresía manualmente
+// Endpoint para recargar días, saldo de Wallet (por userId o código BOT-IXXXXXX) o cambiar estado de membresía manualmente
 export async function PATCH(req: NextRequest) {
   try {
     await requireSuperAdmin();
-    const { userId, daysToAdd, walletCreditUSD, status, isActive } = await req.json();
+    const { userId, botCode, daysToAdd, walletCreditUSD, status, isActive } = await req.json();
 
-    if (!userId) {
-      return NextResponse.json({ error: "userId es requerido" }, { status: 400 });
+    let targetUserId = userId as string | undefined;
+
+    if (!targetUserId && botCode) {
+      const normalized = String(botCode).trim().toUpperCase();
+      const codeWithPrefix = normalized.startsWith("BOT-I")
+        ? normalized
+        : normalized.startsWith("BOT-")
+        ? `BOT-I${normalized.replace(/^BOT-I?/i, "")}`
+        : `BOT-I${normalized}`;
+
+      const foundUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { botCode: { equals: normalized, mode: "insensitive" } },
+            { botCode: { equals: codeWithPrefix, mode: "insensitive" } },
+          ],
+        },
+      });
+
+      if (!foundUser) {
+        return NextResponse.json(
+          { error: `No se encontró ningún usuario registrado con el código ${normalized}` },
+          { status: 404 }
+        );
+      }
+      targetUserId = foundUser.id;
+    }
+
+    if (!targetUserId) {
+      return NextResponse.json({ error: "Debes proporcionar userId o el código BOT-IXXXXXX del usuario" }, { status: 400 });
     }
 
     if (isActive !== undefined) {
       await prisma.user.update({
-        where: { id: userId },
+        where: { id: targetUserId },
         data: { isActive },
       });
     }
@@ -77,17 +126,17 @@ export async function PATCH(req: NextRequest) {
       const amount = Number(walletCreditUSD);
       await prisma.$transaction([
         prisma.user.update({
-          where: { id: userId },
+          where: { id: targetUserId },
           data: {
             walletBalance: { increment: amount },
           },
         }),
         prisma.walletTransaction.create({
           data: {
-            userId,
+            userId: targetUserId,
             amount,
             type: "CREDIT",
-            description: `Recarga acreditada por Administración (+$${amount.toFixed(2)} USD)`,
+            description: `Recarga manual por código ${botCode ? `(${String(botCode).toUpperCase()}) ` : ""}(+$${amount.toFixed(2)} USD)`,
           },
         }),
       ]);
@@ -95,7 +144,7 @@ export async function PATCH(req: NextRequest) {
 
     if (daysToAdd !== undefined || status !== undefined) {
       const currentSub = await prisma.subscription.findUnique({
-        where: { userId },
+        where: { userId: targetUserId },
       });
 
       if (currentSub) {
@@ -110,7 +159,7 @@ export async function PATCH(req: NextRequest) {
         }
 
         await prisma.subscription.update({
-          where: { userId },
+          where: { userId: targetUserId },
           data: {
             expiresAt: newExpiresAt,
             status: status || (newExpiresAt > now ? "ACTIVE" : currentSub.status),
@@ -131,7 +180,23 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, message: "Usuario actualizado correctamente" });
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        botCode: true,
+        name: true,
+        storeName: true,
+        email: true,
+        walletBalance: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Usuario actualizado correctamente",
+      user: updatedUser,
+    });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });

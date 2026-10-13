@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/context/ThemeContext";
 import { 
@@ -15,6 +15,12 @@ export default function ClientLoginPage() {
   
   const [isRegister, setIsRegister] = useState(false);
   const [step, setStep] = useState<"FORM" | "OTP">("FORM");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("mode=register")) {
+      setIsRegister(true);
+    }
+  }, []);
 
   // Formulario Registro
   const [storeName, setStoreName] = useState("");
@@ -282,14 +288,14 @@ export default function ClientLoginPage() {
                       <label className={`block text-[10px] font-extrabold uppercase tracking-wider mb-1 pl-0.5 ${
                         isDark ? "text-neutral-400" : "text-neutral-600"
                       }`}>
-                        Nombre de Tienda / Negocio *
+                        Tu Nombre, Marca o Proyecto *
                       </label>
                       <div className="relative">
-                        <Store className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <UserIcon className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           required
-                          placeholder="Ej. Streaming Store"
+                          placeholder="Ej. Carlos / Agencia Digital"
                           value={storeName}
                           onChange={(e) => setStoreName(e.target.value)}
                           className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#229ED9]/30 focus:border-[#229ED9] transition-all ${

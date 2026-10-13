@@ -12,10 +12,11 @@ export async function GET() {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { id: session.userId },
       select: {
         id: true,
+        botCode: true,
         email: true,
         phoneNumber: true,
         storeName: true,
@@ -44,6 +45,15 @@ export async function GET() {
 
     if (!user || !user.isActive) {
       return NextResponse.json({ authenticated: false, error: "Usuario inactivo" }, { status: 403 });
+    }
+
+    if (!user.botCode) {
+      const newBotCode = `BOT-I${Math.floor(100000 + Math.random() * 900000)}`;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { botCode: newBotCode },
+      });
+      user = { ...user, botCode: newBotCode };
     }
 
     const membership = await validateUserSubscription(user.id);

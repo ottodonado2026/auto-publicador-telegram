@@ -6,7 +6,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { 
   Send, PhoneCall, KeyRound, CheckCircle2, 
   AlertCircle, ShieldCheck, RefreshCw, Users, 
-  User, Store, Mail, Lock, Eye, EyeOff, ShieldAlert, Check
+  User, Mail, Lock, Eye, EyeOff, Check, Copy, Hash, Wallet
 } from "lucide-react";
 
 export default function ClientTelegramPage() {
@@ -21,6 +21,7 @@ export default function ClientTelegramPage() {
   const [accountInfo, setAccountInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedBotCode, setCopiedBotCode] = useState(false);
 
   // Grupos detectados
   const [groups, setGroups] = useState<any[]>([]);
@@ -62,6 +63,13 @@ export default function ClientTelegramPage() {
   useEffect(() => {
     fetchSession();
   }, []);
+
+  const handleCopyBotCode = () => {
+    if (!sessionUser?.botCode) return;
+    navigator.clipboard.writeText(sessionUser.botCode);
+    setCopiedBotCode(true);
+    setTimeout(() => setCopiedBotCode(false), 2000);
+  };
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,10 +199,10 @@ export default function ClientTelegramPage() {
       <main className="flex-1 ml-64 p-8 max-w-5xl w-full mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Gestión de Perfil & Cuenta de Telegram
+            Mi Perfil, Código de Usuario & Cuenta de Telegram
           </h1>
           <p className={`text-xs font-semibold mt-1.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-            Consulta tus credenciales registradas, restablece tu contraseña mediante OTP de Telegram y sincroniza tus grupos de difusión.
+            Consulta tu código único <span className="font-mono font-bold text-[#229ED9]">BOT-IXXXXXX</span> para recargas de Wallet, administra tu seguridad y vincula tus cuentas de Telegram.
           </p>
         </div>
 
@@ -206,7 +214,7 @@ export default function ClientTelegramPage() {
         )}
 
         <div className="space-y-6">
-          {/* TARJETA 1: PERFIL REGISTRADO Y ACCESO A CONTRASEÑA */}
+          {/* TARJETA 1: PERFIL REGISTRADO, CÓDIGO BOT-IXXXXXX Y ACCESO A CONTRASEÑA */}
           <div className={`rounded-3xl p-7 border shadow-xl ${
             isDark ? "bg-[#1E2229] border-[#2D3340]" : "bg-white border-neutral-300"
           }`}>
@@ -216,15 +224,25 @@ export default function ClientTelegramPage() {
                   <User className="w-7 h-7" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-black">{sessionUser?.storeName || sessionUser?.name || "Mi Tienda"}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-black">{sessionUser?.storeName || sessionUser?.name || "Mi Cuenta OttBot"}</h2>
                     <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-500/20 text-[#229ED9] border border-[#229ED9]/30 uppercase">
-                      Cuenta Cliente
+                      Usuario Verificado
                     </span>
                   </div>
-                  <p className={`text-xs font-mono mt-0.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                    ID: {sessionUser?.id ? sessionUser.id.slice(0, 12) : "..."}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs font-semibold ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                      Código Único de Recarga:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyBotCode}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#229ED9]/15 border border-[#229ED9]/40 text-[#229ED9] font-mono font-black text-xs hover:bg-[#229ED9]/25 transition-all cursor-pointer"
+                    >
+                      <span>{sessionUser?.botCode || "BOT-I------"}</span>
+                      {copiedBotCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -243,17 +261,50 @@ export default function ClientTelegramPage() {
               </button>
             </div>
 
+            {/* Banner Destacado del Código BOT-IXXXXXX para Recargas de Wallet */}
+            <div className={`mt-6 p-4 rounded-2xl border-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              isDark
+                ? "bg-[#171A20] border-[#229ED9]/40"
+                : "bg-sky-50/70 border-[#229ED9]/40"
+            }`}>
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-[#229ED9] text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                  <Hash className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#229ED9]">
+                    Tu Código Personal para Recargar Wallet
+                  </div>
+                  <div className="text-xl font-mono font-black tracking-wider mt-0.5">
+                    {sessionUser?.botCode || "BOT-I------"}
+                  </div>
+                  <p className={`text-xs mt-0.5 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                    Envía este código al soporte o administrador para acreditar saldo instantáneamente en tu Wallet (Saldo actual: <strong className="text-emerald-500 font-mono">${Number(sessionUser?.walletBalance || 0).toFixed(2)} USD</strong>).
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCopyBotCode}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#229ED9] hover:bg-blue-500 text-white text-xs font-black rounded-xl shadow-md transition-all cursor-pointer flex-shrink-0"
+              >
+                {copiedBotCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedBotCode ? "¡Código Copiado!" : "Copiar mi Código"}</span>
+              </button>
+            </div>
+
             {/* Datos Registrados */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5">
               <div className={`p-4 rounded-2xl border ${
                 isDark ? "bg-[#171A20] border-[#2D3340]" : "bg-neutral-50 border-neutral-200"
               }`}>
                 <div className="flex items-center gap-2 text-xs font-bold text-neutral-400 mb-1">
-                  <Store className="w-3.5 h-3.5 text-[#229ED9]" />
-                  <span>Nombre de la Tienda</span>
+                  <User className="w-3.5 h-3.5 text-[#229ED9]" />
+                  <span>Nombre / Marca</span>
                 </div>
                 <div className="text-sm font-black truncate">
-                  {sessionUser?.storeName || "No registrado"}
+                  {sessionUser?.storeName || sessionUser?.name || "No registrado"}
                 </div>
               </div>
 

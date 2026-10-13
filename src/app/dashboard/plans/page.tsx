@@ -272,6 +272,9 @@ export default function ClientPlansPage() {
                     </span>
                     <span className="text-xs font-bold text-neutral-400">USD</span>
                   </div>
+                  <div className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-[#229ED9]/20 border border-[#229ED9]/40 text-[11px] font-mono font-black text-sky-300">
+                    <span>Tu Código de Recarga: {sessionUser?.botCode || "BOT-I------"}</span>
+                  </div>
                 </div>
               </div>
 
@@ -300,12 +303,12 @@ export default function ClientPlansPage() {
 
             <div className="pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <p className="text-xs text-neutral-300 leading-relaxed max-w-md">
-                Con saldo en tu <strong>Wallet</strong> puedes activar planes de 1, 7, 15 o 30 días de forma automática sin esperar validación manual.
+                Proporciona tu código <strong className="font-mono text-sky-300">{sessionUser?.botCode || "BOT-I------"}</strong> al recargar tu <strong>Wallet</strong> para acreditar tu saldo al instante y activar planes de 1, 7, 15 o 30 días con 1 clic.
               </p>
 
               <a
                 href={`https://t.me/OttBotOficial?text=${encodeURIComponent(
-                  `Hola, deseo recargar +$${topupAmount}.00 USD de saldo en mi Wallet de OttBot para la cuenta ${sessionUser?.email || sessionUser?.phoneNumber}.`
+                  `Hola, deseo recargar +$${topupAmount}.00 USD de saldo en mi Wallet de OttBot. Mi código único de usuario es ${sessionUser?.botCode || "BOT-I"} (${sessionUser?.email || sessionUser?.phoneNumber}).`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

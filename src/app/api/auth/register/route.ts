@@ -36,8 +36,11 @@ export async function POST(req: NextRequest) {
     const trialExpiry = new Date();
     trialExpiry.setDate(trialExpiry.getDate() + 1);
 
+    const generatedBotCode = `BOT-I${Math.floor(100000 + Math.random() * 900000)}`;
+
     const user = await prisma.user.create({
       data: {
+        botCode: generatedBotCode,
         email: normalizedEmail,
         name: name?.trim() || null,
         passwordHash,
@@ -45,7 +48,9 @@ export async function POST(req: NextRequest) {
         subscription: {
           create: {
             status: "TRIAL",
-            dailyRate: 1.0,
+            dailyRate: 1.25,
+            maxCampaigns: 2,
+            maxAccounts: 1,
             expiresAt: trialExpiry,
           },
         },
